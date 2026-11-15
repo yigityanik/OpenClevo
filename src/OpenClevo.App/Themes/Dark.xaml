@@ -1,0 +1,38 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Dark: near-black window, one step lighter grouped surface, hairlines at 8 % white, Apple system colors. -->
+    <Color x:Key="BgColor">#141416</Color>
+    <Color x:Key="CardColor">#1E1E21</Color>
+    <Color x:Key="CardHiColor">#2A2A2E</Color>
+    <Color x:Key="LineColor">#16FFFFFF</Color>
+    <Color x:Key="TextColor">#F5F5F7</Color>
+    <Color x:Key="MutedColor">#9A9AA0</Color>
+    <Color x:Key="FaintColor">#5E5E64</Color>
+    <Color x:Key="CpuColor">#0A84FF</Color>
+    <Color x:Key="AccentColor">#4CC2FF</Color>
+    <Color x:Key="GpuColor">#30D158</Color>
+    <Color x:Key="WarnColor">#FF9F0A</Color>
+    <Color x:Key="HotColor">#FF453A</Color>
+    <Color x:Key="SegBgColor">#2A2A2E</Color>
+    <Color x:Key="SegThumbColor">#55555B</Color>
+    <Color x:Key="TrackOffColor">#3A3A3F</Color>
+    <Color x:Key="HoverColor">#36363B</Color>
+
+    <SolidColorBrush x:Key="Bg" Color="{StaticResource BgColor}"/>
+    <SolidColorBrush x:Key="Card" Color="{StaticResource CardColor}"/>
+    <SolidColorBrush x:Key="CardHi" Color="{StaticResource CardHiColor}"/>
+    <SolidColorBrush x:Key="Line" Color="{StaticResource LineColor}"/>
+    <SolidColorBrush x:Key="Text" Color="{StaticResource TextColor}"/>
+    <SolidColorBrush x:Key="Muted" Color="{StaticResource MutedColor}"/>
+    <SolidColorBrush x:Key="Faint" Color="{StaticResource FaintColor}"/>
+    <SolidColorBrush x:Key="Accent" Color="{StaticResource AccentColor}"/>
+    <SolidColorBrush x:Key="Cpu" Color="{StaticResource CpuColor}"/>
+    <SolidColorBrush x:Key="Gpu" Color="{StaticResource GpuColor}"/>
+    <SolidColorBrush x:Key="Warn" Color="{StaticResource WarnColor}"/>
+    <SolidColorBrush x:Key="Hot" Color="{StaticResource HotColor}"/>
+    <SolidColorBrush x:Key="SegBg" Color="{StaticResource SegBgColor}"/>
+    <SolidColorBrush x:Key="SegThumb" Color="{StaticResource SegThumbColor}"/>
+    <SolidColorBrush x:Key="TrackOff" Color="{StaticResource TrackOffColor}"/>
+    <SolidColorBrush x:Key="Hover" Color="{StaticResource HoverColor}"/>
+    <SolidColorBrush x:Key="OnAccent" Color="#1F1F1F"/>
+</ResourceDictionary>

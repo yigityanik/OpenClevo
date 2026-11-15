@@ -1,0 +1,370 @@
+<Window x:Class="OpenClevo.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:c="clr-namespace:OpenClevo.App.Controls"
+        Title="OpenClevo" Width="1200" Height="675" ResizeMode="CanMinimize"
+        WindowStartupLocation="CenterScreen" Background="{DynamicResource Bg}"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Ideal" TextOptions.TextRenderingMode="ClearType">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="56" ResizeBorderThickness="0" GlassFrameThickness="0" CornerRadius="0"/>
+    </WindowChrome.WindowChrome>
+
+    <Grid x:Name="Root">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="68"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Side rail: pages (independent of page content) and settings -->
+        <Border Grid.Column="0" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="56"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <StackPanel Grid.Row="1" HorizontalAlignment="Center" Margin="0,8,0,0" WindowChrome.IsHitTestVisibleInChrome="True">
+                    <RadioButton x:Name="TabFans" GroupName="tabs" Style="{StaticResource RailBtn}" ToolTip="Fanlar" AutomationProperties.Name="Fanlar" IsChecked="True" Checked="Tab_Click">
+                        <c:FanIcon Width="22" Height="22" Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+                    </RadioButton>
+                    <RadioButton x:Name="TabKb" GroupName="tabs" Style="{StaticResource RailBtn}" ToolTip="Klavye ışığı" AutomationProperties.Name="Klavye ışığı" Checked="Tab_Click">
+                        <TextBlock Text="&#xE765;" FontFamily="{StaticResource Icons}" FontSize="20" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+                    </RadioButton>
+                    <RadioButton x:Name="TabBat" GroupName="tabs" Style="{StaticResource RailBtn}" ToolTip="Pil ve sistem" AutomationProperties.Name="Pil ve sistem" Checked="Tab_Click">
+                        <TextBlock Text="&#xE83F;" FontFamily="{StaticResource Icons}" FontSize="20" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
+                    </RadioButton>
+                    <RadioButton x:Name="TabSys" GroupName="tabs" Style="{StaticResource RailBtn}" ToolTip="Sistem" AutomationProperties.Name="Sistem" Checked="Tab_Click">
+                        <Path Width="20" Height="20" Stretch="Uniform" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"
+                              Data="M3,7 L21,7 M3,17 L21,17 M6.5,7 A2.5,2.5 0 1 0 11.5,7 A2.5,2.5 0 1 0 6.5,7 M12.5,17 A2.5,2.5 0 1 0 17.5,17 A2.5,2.5 0 1 0 12.5,17"/>
+                    </RadioButton>
+                </StackPanel>
+                <ToggleButton x:Name="SettingsBtn" Grid.Row="2" Width="44" Height="44" Margin="0,0,0,12" ToolTip="Ayarlar" WindowChrome.IsHitTestVisibleInChrome="True">
+                    <ToggleButton.Template>
+                        <ControlTemplate TargetType="ToggleButton">
+                            <Border x:Name="b" Background="Transparent" CornerRadius="6">
+                                <TextBlock Text="&#xE713;" FontFamily="{StaticResource Icons}" FontSize="17" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="{DynamicResource Hover}"/></Trigger>
+                                <Trigger Property="IsChecked" Value="True"><Setter TargetName="b" Property="Background" Value="{DynamicResource SegBg}"/></Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </ToggleButton.Template>
+                </ToggleButton>
+
+                <!-- Settings: two switches, nothing else -->
+                <Popup IsOpen="{Binding IsChecked, ElementName=SettingsBtn, Mode=TwoWay}" PlacementTarget="{Binding ElementName=SettingsBtn}"
+                       Placement="Right" VerticalOffset="-120" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
+                    <Border Background="{DynamicResource Card}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="8"
+                            Padding="18,14" Width="280" Margin="12,22,22,22">
+                        <Border.Effect><DropShadowEffect BlurRadius="22" ShadowDepth="4" Opacity="0.3" Color="Black"/></Border.Effect>
+                        <StackPanel>
+                            <CheckBox x:Name="StartupToggle" Style="{StaticResource Toggle}" Click="StartupToggle_Click">
+                                <TextBlock Text="Windows ile başlat"/>
+                            </CheckBox>
+                            <CheckBox x:Name="TrayToggle" Style="{StaticResource Toggle}" Margin="0,12,0,0" Click="TrayToggle_Click">
+                                <TextBlock Text="Tepsiye küçült"/>
+                            </CheckBox>
+                        </StackPanel>
+                    </Border>
+                </Popup>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="56"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- caption: drag area, driver warning (only when needed), window buttons -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Right" WindowChrome.IsHitTestVisibleInChrome="True">
+                <Border x:Name="StatusPill" Background="Transparent" Margin="0,0,10,0" VerticalAlignment="Center" Visibility="Collapsed">
+                    <StackPanel Orientation="Horizontal">
+                        <Ellipse x:Name="StatusDot" Width="7" Height="7" Fill="{DynamicResource Hot}" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="StatusText" Text="Sürücüye erişilemiyor" Style="{StaticResource Caption}" Foreground="{DynamicResource Hot}" Margin="7,0,0,0"/>
+                    </StackPanel>
+                </Border>
+                <Button Width="46" Height="56" Click="MinBtn_Click" ToolTip="Küçült">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="b" Background="Transparent">
+                                <TextBlock Text="&#xE921;" FontFamily="{StaticResource Icons}" FontSize="10" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="b" Property="Background" Value="{DynamicResource Hover}"/></Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+                <Button Width="46" Height="56" Click="CloseBtn_Click" ToolTip="Kapat">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="b" Background="Transparent">
+                                <TextBlock x:Name="g" Text="&#xE8BB;" FontFamily="{StaticResource Icons}" FontSize="10" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="b" Property="Background" Value="#E81123"/>
+                                    <Setter TargetName="g" Property="Foreground" Value="White"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </StackPanel>
+
+        <Grid Grid.Row="1" Margin="32,0,32,28">
+            <!-- FANS: temperatures, power mode, then curves -->
+            <Grid x:Name="FanPanel">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- vitals: two readings side by side, no cards -->
+                <Grid Margin="0,0,0,18">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="40"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="132"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel Grid.ColumnSpan="3" Orientation="Horizontal">
+                            <TextBlock x:Name="CpuName" Text="CPU" Style="{StaticResource Caption}" TextTrimming="CharacterEllipsis" MaxWidth="360"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="1" x:Name="CpuTemp" Text="--" FontFamily="{StaticResource Display}" FontSize="58" FontWeight="Light" Style="{StaticResource Numeric}"/>
+                        <StackPanel Grid.Row="1" Grid.Column="1" VerticalAlignment="Bottom" Margin="14,0,0,14">
+                            <StackPanel Orientation="Horizontal">
+                                <c:FanIcon x:Name="CpuFan" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock x:Name="CpuRpm" Text="--" FontWeight="SemiBold" Style="{StaticResource Numeric}"/>
+                            </StackPanel>
+                            <TextBlock x:Name="CpuDuty" Text="--" Style="{StaticResource Caption}" Margin="0,2,0,0"/>
+                            <TextBlock x:Name="CpuMhz" Text="" Style="{StaticResource Caption}" Margin="0,1,0,0"/>
+                        </StackPanel>
+                        <c:Sparkline Grid.Row="1" Grid.Column="2" x:Name="CpuSpark" Height="44" VerticalAlignment="Bottom" Margin="22,0,0,14" Accent="{DynamicResource CpuColor}"/>
+                    </Grid>
+
+                    <Grid Grid.Column="2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="132"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel Grid.ColumnSpan="3" Orientation="Horizontal">
+                            <TextBlock x:Name="GpuName" Text="GPU" Style="{StaticResource Caption}" TextTrimming="CharacterEllipsis" MaxWidth="360"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="1" x:Name="GpuTemp" Text="--" FontFamily="{StaticResource Display}" FontSize="58" FontWeight="Light" Style="{StaticResource Numeric}"/>
+                        <StackPanel Grid.Row="1" Grid.Column="1" VerticalAlignment="Bottom" Margin="14,0,0,14">
+                            <StackPanel Orientation="Horizontal">
+                                <c:FanIcon x:Name="GpuFan" Width="16" Height="16" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                <TextBlock x:Name="GpuRpm" Text="--" FontWeight="SemiBold" Style="{StaticResource Numeric}"/>
+                            </StackPanel>
+                            <TextBlock x:Name="GpuDuty" Text="--" Style="{StaticResource Caption}" Margin="0,2,0,0"/>
+                            <TextBlock x:Name="GpuMhz" Text="" Style="{StaticResource Caption}" Margin="0,1,0,0"/>
+                        </StackPanel>
+                        <c:Sparkline Grid.Row="1" Grid.Column="2" x:Name="GpuSpark" Height="44" VerticalAlignment="Bottom" Margin="22,0,0,14" Accent="{DynamicResource GpuColor}"/>
+                    </Grid>
+                </Grid>
+
+                <StackPanel Grid.Row="1">
+                    <Border Style="{StaticResource Hairline}" Margin="0,0,0,14"/>
+                    <TextBlock Text="Güç modu" FontFamily="{StaticResource Display}" FontSize="21" FontWeight="Light" Margin="12,0,0,8"/>
+                    <WrapPanel x:Name="ModeGrid" Orientation="Horizontal" Margin="8,0,0,20"/>
+                </StackPanel>
+
+                <!-- fan control: title, CPU Fan / GPU Fan, one chart -->
+                <Grid Grid.Row="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Fan kontrolü" FontFamily="{StaticResource Display}" FontSize="21" FontWeight="Light" Margin="12,0,0,6"/>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,2">
+                        <RadioButton x:Name="TabCpuFan" GroupName="fansel" Style="{StaticResource FanTab}" Content="CPU Fan" Tag="{DynamicResource Cpu}" IsChecked="True" Checked="FanSel_Changed"/>
+                        <RadioButton x:Name="TabGpuFan" GroupName="fansel" Style="{StaticResource FanTab}" Content="GPU Fan" Tag="{DynamicResource Gpu}" Checked="FanSel_Changed"/>
+                    </StackPanel>
+                    <Grid Grid.Row="2" Margin="0,4,0,0">
+                        <c:CurveEditor x:Name="CpuCurve" Accent="{DynamicResource CpuColor}"/>
+                        <c:CurveEditor x:Name="GpuCurve" Accent="{DynamicResource GpuColor}" Visibility="Collapsed"/>
+                    </Grid>
+                    <Grid Grid.Row="3" Margin="0,14,0,0">
+                        <Border HorizontalAlignment="Left" Background="{DynamicResource SegBg}" CornerRadius="6" Padding="2">
+                            <Grid>
+                                <Border x:Name="FanThumb" Background="{DynamicResource SegThumb}" CornerRadius="4">
+                                    <Border.Effect><DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.16" Color="Black"/></Border.Effect>
+                                </Border>
+                                <StackPanel x:Name="FanHost" Orientation="Horizontal">
+                                    <RadioButton x:Name="FanAuto" GroupName="fanmode" Style="{StaticResource SlideSegment}" Content="Otomatik" Click="FanAuto_Click"/>
+                                    <RadioButton x:Name="FanCustom" GroupName="fanmode" Style="{StaticResource SlideSegment}" Content="Özel eğri" Click="FanCustom_Click"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <!-- auto mode only: Clevo's "Increment" (extra fan %, tens) -->
+                        <StackPanel x:Name="OffsetBar" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <TextBlock Text="Artış" Style="{StaticResource Caption}" VerticalAlignment="Center" Margin="0,0,14,0"/>
+                            <Slider x:Name="FanOffsetSlider" Width="220" Minimum="0" Maximum="100" TickFrequency="10" SmallChange="10" LargeChange="10" IsSnapToTickEnabled="True" VerticalAlignment="Center" ValueChanged="FanOffset_Changed"/>
+                            <TextBlock x:Name="FanOffsetText" Text="%0" Style="{StaticResource Numeric}" Width="44" TextAlignment="Right" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </StackPanel>
+                        <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                            <Button x:Name="RevertBtn" Style="{StaticResource Btn}" Content="Geri al" Click="RevertBtn_Click" IsEnabled="False"/>
+                            <Button x:Name="ApplyBtn" Style="{StaticResource PrimaryBtn}" Content="Uygula" Margin="8,0,0,0" Click="ApplyBtn_Click" IsEnabled="False"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Grid>
+            <!-- KEYBOARD -->
+            <Grid x:Name="KbPanel" Visibility="Collapsed">
+                <Border Style="{StaticResource Group}" HorizontalAlignment="Center" VerticalAlignment="Center" Width="860" Margin="0,0,0,24">
+                    <StackPanel>
+                        <c:KeyboardPreview x:Name="KbPreview" MaxWidth="620" HorizontalAlignment="Center" Margin="26,24,26,20"/>
+
+                        <Border Style="{StaticResource Hairline}" Margin="26,0"/>
+
+                        <StackPanel Margin="26,18,26,20">
+                            <Grid>
+                                <TextBlock Text="Renk" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <CheckBox x:Name="AllZonesToggle" Style="{StaticResource Toggle}" IsChecked="True" Margin="0,0,24,0" Click="AllZones_Click">
+                                        <TextBlock Text="Tüm bölgeler" Style="{StaticResource Caption}"/>
+                                    </CheckBox>
+                                    <TextBlock Text="Parlaklık" Style="{StaticResource Caption}" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                    <Border Background="{DynamicResource SegBg}" CornerRadius="6" Padding="2">
+                                        <StackPanel x:Name="BrightnessBar" Orientation="Horizontal"/>
+                                    </Border>
+                                </StackPanel>
+                            </Grid>
+                            <WrapPanel x:Name="Swatches" Margin="0,14,0,0"/>
+                        </StackPanel>
+
+                        <Border Style="{StaticResource Hairline}" Margin="26,0"/>
+
+                        <StackPanel Margin="26,18,26,18">
+                            <TextBlock x:Name="HwHeader" Text="Donanım efektleri" FontWeight="SemiBold"/>
+                            <WrapPanel x:Name="HwEffects" Margin="0,12,0,4"/>
+                            <StackPanel x:Name="SwHeader" Orientation="Horizontal" Margin="0,8,0,0">
+                                <TextBlock x:Name="SwHeaderText" Text="Efektler" FontWeight="SemiBold"/>
+                            </StackPanel>
+                            <WrapPanel x:Name="SwEffects" Margin="0,12,0,0"/>
+                        </StackPanel>
+
+                        <Border Style="{StaticResource Hairline}" Margin="26,0"/>
+
+                        <Grid Margin="26,16,26,20">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                <TextBlock Text="Kapanma süresi" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                                <Border Background="{DynamicResource SegBg}" CornerRadius="6" Padding="2">
+                                    <StackPanel x:Name="TimeoutBar" Orientation="Horizontal"/>
+                                </Border>
+                            </StackPanel>
+                            <Button x:Name="KbApplyBtn" Style="{StaticResource PrimaryBtn}" Content="Uygula" HorizontalAlignment="Right" IsEnabled="False" Click="KbApply_Click"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- SYSTEM: on/off switches -->
+            <Grid x:Name="SysPanel" Visibility="Collapsed">
+                <Border Style="{StaticResource Group}" Width="620" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,24">
+                    <StackPanel Margin="26,8">
+                        <CheckBox x:Name="SwNvidia" Style="{StaticResource Toggle}" Margin="0,14" Click="SysToggle_Click"><TextBlock Text="NVIDIA GPU"/></CheckBox>
+                        <Border Style="{StaticResource Hairline}"/>
+                        <CheckBox x:Name="SwWinLock" Style="{StaticResource Toggle}" Margin="0,14" Click="SysToggle_Click"><TextBlock Text="Windows tuşunu kilitle"/></CheckBox>
+                        <Border Style="{StaticResource Hairline}"/>
+                        <CheckBox x:Name="SwCamera" Style="{StaticResource Toggle}" Margin="0,14" Click="SysToggle_Click"><TextBlock Text="Kamera"/></CheckBox>
+                        <Border Style="{StaticResource Hairline}"/>
+                        <CheckBox x:Name="SwTouchpad" Style="{StaticResource Toggle}" Margin="0,14" Click="SysToggle_Click"><TextBlock Text="Dokunmatik yüzey"/></CheckBox>
+                        <Border Style="{StaticResource Hairline}"/>
+                        <CheckBox x:Name="SwNum" Style="{StaticResource Toggle}" Margin="0,14" Click="SysToggle_Click"><TextBlock Text="Num Lock"/></CheckBox>
+                        <Border Style="{StaticResource Hairline}"/>
+                        <CheckBox x:Name="SwScroll" Style="{StaticResource Toggle}" Margin="0,14" Click="SysToggle_Click"><TextBlock Text="Scroll Lock"/></CheckBox>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- BATTERY & SYSTEM -->
+            <Grid x:Name="BatPanel" Visibility="Collapsed">
+                <Grid x:Name="BatteryContent">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Şarj ayarları" FontFamily="{StaticResource Display}" FontSize="21" FontWeight="Light" Margin="12,0,0,6"/>
+                    <Grid Grid.Row="1" Margin="0,0,0,18">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="40"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="Pil" Style="{StaticResource Caption}"/>
+                            <TextBlock x:Name="BatteryPercent" Text="--" FontFamily="{StaticResource Display}" FontSize="58" FontWeight="Light" Style="{StaticResource Numeric}"/>
+                            <TextBlock x:Name="BatteryStatus" Text="" Style="{StaticResource Caption}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="Şarj aralığı" Style="{StaticResource Caption}"/>
+                            <TextBlock x:Name="ChargeRangeText" Text="Kapalı" FontFamily="{StaticResource Display}" FontSize="58" FontWeight="Light" Style="{StaticResource Numeric}"/>
+                            <TextBlock x:Name="ChargeRangeStatus" Text="Pil %100'e kadar şarj olur" Style="{StaticResource Caption}"/>
+                        </StackPanel>
+                    </Grid>
+                    <c:ChargeRange x:Name="ChargeRangeBar" Grid.Row="2" Height="28" Margin="0,0,0,14"/>
+                    <Border Grid.Row="3" Style="{StaticResource Group}">
+                        <StackPanel>
+                            <CheckBox x:Name="ChargeToggle" Style="{StaticResource Toggle}" Margin="26,18" Click="ChargeEdited">
+                                <TextBlock Text="Şarj sınırı"/>
+                            </CheckBox>
+                            <Border Style="{StaticResource Hairline}" Margin="26,0"/>
+                            <Grid Margin="26,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition Width="56"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Başlat" VerticalAlignment="Center"/>
+                                <Slider Grid.Column="1" x:Name="StartSlider" Minimum="40" Maximum="95" TickFrequency="5" IsSnapToTickEnabled="True" ValueChanged="ChargeSlider_Changed" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" x:Name="StartText" Text="--" Style="{StaticResource Numeric}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+                            <Border Style="{StaticResource Hairline}" Margin="26,0"/>
+                            <Grid Margin="26,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition Width="56"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Durdur" VerticalAlignment="Center"/>
+                                <Slider Grid.Column="1" x:Name="StopSlider" Minimum="50" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" ValueChanged="ChargeSlider_Changed" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="2" x:Name="StopText" Text="--" Style="{StaticResource Numeric}" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                    <Button Grid.Row="4" x:Name="ChargeApplyBtn" Style="{StaticResource PrimaryBtn}" Content="Uygula" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,18,0,0" Click="ChargeApply_Click" IsEnabled="False"/>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Grid>
+        <!-- app name, centred in the title row (does not block dragging the window) -->
+        <TextBlock Grid.ColumnSpan="2" Text="OpenClevo" FontFamily="{StaticResource Display}" FontSize="18" FontWeight="Light"
+                   HorizontalAlignment="Center" VerticalAlignment="Top" Height="56" Padding="0,14,0,0" IsHitTestVisible="False"/>
+    </Grid>
+</Window>

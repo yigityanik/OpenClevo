@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/OpenClevo.App/OpenClevo.App.csproj" />
+    <Project Path="src/OpenClevo.Core/OpenClevo.Core.csproj" />
+    <Project Path="src/OpenClevo.Probe/OpenClevo.Probe.csproj" />
+  </Folder>
+</Solution>
