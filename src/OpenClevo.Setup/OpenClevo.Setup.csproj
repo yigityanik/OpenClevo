@@ -18,6 +18,10 @@
   <ItemGroup>
     <!-- the app, zipped by build.ps1 -->
     <EmbeddedResource Include="Payload.zip" LogicalName="Payload.zip" />
+    <!-- the same UI text and markup extension as the app -->
+    <EmbeddedResource Include="..\..\langs\*.json" LogicalName="langs/%(Filename)%(Extension)" />
+    <Compile Include="..\OpenClevo.App\Localization\Loc.cs" Link="Localization\Loc.cs" />
+    <Compile Include="..\OpenClevo.App\Localization\TExtension.cs" Link="Localization\TExtension.cs" />
   </ItemGroup>
 
 </Project>

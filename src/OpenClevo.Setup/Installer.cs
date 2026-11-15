@@ -1,3 +1,4 @@
+using OpenClevo.Localization;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -24,16 +25,16 @@ static class Installer
 
     public static void Run(bool startup, bool tray, bool desktop, Action<string, double> progress)
     {
-        progress("Çalışan kopya kapatılıyor…", 0.05);
+        progress(Loc.T("setup.progress_stop"), 0.05);
         foreach (var p in Process.GetProcessesByName("OpenClevo").Where(p => p.Id != Environment.ProcessId))
         {
             try { p.Kill(true); p.WaitForExit(5000); } catch { }
         }
 
-        progress("Dosyalar kopyalanıyor…", 0.15);
+        progress(Loc.T("setup.progress_copy"), 0.15);
         Directory.CreateDirectory(TargetDir);
         using (var payload = Assembly.GetExecutingAssembly().GetManifestResourceStream("Payload.zip")
-               ?? throw new InvalidOperationException("Kurulum paketi bulunamadı."))
+               ?? throw new InvalidOperationException(Loc.T("setup.err_payload")))
         using (var zip = new ZipArchive(payload, ZipArchiveMode.Read))
         {
             int n = 0, total = zip.Entries.Count;
@@ -43,7 +44,7 @@ static class Installer
                 var dest = Path.Combine(TargetDir, entry.FullName);
                 Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
                 entry.ExtractToFile(dest, overwrite: true);
-                progress("Dosyalar kopyalanıyor…", 0.15 + 0.5 * ++n / total);
+                progress(Loc.T("setup.progress_copy"), 0.15 + 0.5 * ++n / total);
             }
         }
 
@@ -59,30 +60,31 @@ static class Installer
             if (File.Exists(from)) File.Copy(from, Path.Combine(TargetDir, selfName + ext), overwrite: true);
         }
 
-        progress("NVIDIA görevleri kaydediliyor…", 0.7);
-        var sid = WindowsIdentity.GetCurrent().User?.Value ?? throw new InvalidOperationException("Kullanıcı kimliği okunamadı.");
+        progress(Loc.T("setup.progress_tasks"), 0.7);
+        var sid = WindowsIdentity.GetCurrent().User?.Value ?? throw new InvalidOperationException(Loc.T("setup.err_sid"));
         using (var helper = Process.Start(new ProcessStartInfo(TargetExe, "--install-helper=" + sid) { UseShellExecute = false, CreateNoWindow = true }))
         {
             if (helper == null || !helper.WaitForExit(60000) || helper.ExitCode != 0)
-                throw new InvalidOperationException("NVIDIA görevleri kaydedilemedi (kod " + (helper?.ExitCode.ToString() ?? "yok") + ").");
+                throw new InvalidOperationException(Loc.F("setup.err_tasks", helper?.ExitCode.ToString() ?? Loc.T("common.none")));
         }
 
-        progress("Ayarlar yazılıyor…", 0.8);
+        progress(Loc.T("setup.progress_settings"), 0.8);
         using (var k = Registry.CurrentUser.CreateSubKey(AppKey))
             k.SetValue("CloseToTray", tray ? 1 : 0, RegistryValueKind.DWord);
+        Loc.SavedLanguage = Loc.Current;   // the language picked on the welcome page
         using (var run = Registry.CurrentUser.CreateSubKey(RunKey))
         {
             if (startup) run.SetValue("OpenClevo", $"\"{TargetExe}\" --tray");
             else run.DeleteValue("OpenClevo", throwOnMissingValue: false);
         }
 
-        progress("Kısayollar oluşturuluyor…", 0.9);
+        progress(Loc.T("setup.progress_shortcuts"), 0.9);
         CreateShortcut(StartMenuShortcut);
         if (desktop) CreateShortcut(DesktopShortcut);
 
-        progress("Uygulamalar listesine ekleniyor…", 0.95);
+        progress(Loc.T("setup.progress_register"), 0.95);
         RegisterUninstall();
-        progress("Tamam", 1.0);
+        progress(Loc.T("common.ok"), 1.0);
     }
 
     public static string UninstallerPath => Path.Combine(TargetDir, "Uninstall.exe");
@@ -110,21 +112,21 @@ static class Installer
     /// </summary>
     public static void Uninstall(bool removeSettings, Action<string, double> progress)
     {
-        progress("Uygulama kapatılıyor…", 0.05);
+        progress(Loc.T("setup.uninst_stop"), 0.05);
         foreach (var p in Process.GetProcessesByName("OpenClevo").Where(p => p.Id != Environment.ProcessId))
         {
             try { p.Kill(true); p.WaitForExit(5000); } catch { }
         }
 
-        progress("NVIDIA GPU açılıyor…", 0.25);
+        progress(Loc.T("setup.uninst_gpu"), 0.25);
         Schtasks("/run /tn OpenClevoNvidiaOn");   // no-op when the GPU is already on
         Thread.Sleep(3000);
 
-        progress("Görevler siliniyor…", 0.45);
+        progress(Loc.T("setup.uninst_tasks"), 0.45);
         Schtasks("/delete /tn OpenClevoNvidiaOff /f");
         Schtasks("/delete /tn OpenClevoNvidiaOn /f");
 
-        progress("Kısayollar ve başlangıç kaydı siliniyor…", 0.6);
+        progress(Loc.T("setup.uninst_shortcuts"), 0.6);
         using (var run = Registry.CurrentUser.OpenSubKey(RunKey, writable: true))
         {
             Log("startup key opened: " + (run != null));
@@ -134,17 +136,17 @@ static class Installer
         TryDelete(StartMenuShortcut);
         TryDelete(DesktopShortcut);
 
-        progress("Kayıt defteri temizleniyor…", 0.75);
+        progress(Loc.T("setup.uninst_registry"), 0.75);
         Registry.LocalMachine.DeleteSubKeyTree(UninstallKey, throwOnMissingSubKey: false);
         if (removeSettings) Registry.CurrentUser.DeleteSubKeyTree(AppKey, throwOnMissingSubKey: false);
 
-        progress("Dosyalar siliniyor…", 0.9);
+        progress(Loc.T("setup.uninst_files"), 0.9);
         // cmd outlives this process, waits a moment (this program is still running), then removes the folder
         var bat = Path.Combine(Path.GetTempPath(), "openclevo-cleanup.cmd");
         File.WriteAllText(bat, "@echo off\r\nset /a n=0\r\n:loop\r\nrmdir /s /q \"" + TargetDir + "\" 2>nul\r\nif not exist \"" + TargetDir + "\" goto done\r\nset /a n+=1\r\nif %n% gtr 90 goto done\r\nping -n 2 127.0.0.1 >nul\r\ngoto loop\r\n:done\r\ndel \"%~f0\"\r\n");
         Process.Start(new ProcessStartInfo("cmd.exe", "/c \"" + bat + "\"") { UseShellExecute = false, CreateNoWindow = true });
         Log("cleanup started for " + TargetDir);
-        progress("Kaldırıldı", 1.0);
+        progress(Loc.T("setup.uninstalled"), 1.0);
     }
 
     static void Log(string line)

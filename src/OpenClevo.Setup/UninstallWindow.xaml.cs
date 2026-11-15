@@ -1,3 +1,4 @@
+using OpenClevo.Localization;
 using System.Windows;
 using System.Windows.Input;
 
@@ -8,6 +9,7 @@ public partial class UninstallWindow : Window
     public UninstallWindow()
     {
         InitializeComponent();
+        FlowDirection = OpenClevo.Localization.Loc.Flow;
     }
 
     async void Remove_Click(object s, RoutedEventArgs e)
@@ -34,14 +36,14 @@ public partial class UninstallWindow : Window
         {
             StepText.Text = error;
             BtnCancel.IsEnabled = true;
-            BtnCancel.Content = "Kapat";
+            BtnCancel.Content = Loc.T("common.close");
             return;
         }
         PageWork.Visibility = Visibility.Collapsed;
         PageDone.Visibility = Visibility.Visible;
         BtnCancel.Visibility = Visibility.Collapsed;
         BtnNext.Visibility = Visibility.Visible;
-        BtnNext.Content = "Bitir";
+        BtnNext.Content = Loc.T("setup.finish_btn");
         BtnNext.IsEnabled = true;
         BtnNext.Click -= Remove_Click;
         BtnNext.Click += (_, _) => Close();

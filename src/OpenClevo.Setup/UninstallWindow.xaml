@@ -1,7 +1,7 @@
-<Window x:Class="OpenClevo.Setup.UninstallWindow"
+<Window xmlns:loc="clr-namespace:OpenClevo.Localization" x:Class="OpenClevo.Setup.UninstallWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="OpenClevo Kaldır" Width="520" Height="340" ResizeMode="NoResize"
+        Title="{loc:T setup.uninstall_title}" Width="520" Height="340" ResizeMode="NoResize"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         WindowStartupLocation="CenterScreen" UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Ideal" TextOptions.TextRenderingMode="ClearType">
@@ -16,20 +16,20 @@
 
             <Grid Height="40">
                 <TextBlock Text="OpenClevo" FontFamily="{StaticResource Display}" FontSize="14" FontWeight="Light" VerticalAlignment="Center" Margin="18,0,0,0"/>
-                <Button Content="✕" HorizontalAlignment="Right" Width="40" Height="40" Background="Transparent" BorderThickness="0" Foreground="{StaticResource Muted}" FontSize="12" Click="Close_Click" ToolTip="Kapat"/>
+                <Button Content="✕" HorizontalAlignment="Right" Width="40" Height="40" Background="Transparent" BorderThickness="0" Foreground="{StaticResource Muted}" FontSize="12" Click="Close_Click" ToolTip="{loc:T common.close}"/>
             </Grid>
 
             <Grid Grid.Row="1" Margin="32,4,32,0">
                 <!-- confirm -->
                 <StackPanel x:Name="PageAsk" VerticalAlignment="Center">
-                    <TextBlock Text="OpenClevo kaldırılsın mı?" FontFamily="{StaticResource Display}" FontSize="21" FontWeight="Light"/>
-                    <TextBlock Text="Program dosyaları, NVIDIA görevleri ve kısayollar silinir. NVIDIA GPU kapalıysa tekrar açılır." Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,0,18"/>
-                    <CheckBox x:Name="OptSettings" Style="{StaticResource Check}"><TextBlock Text="Ayarları da sil (fan eğrileri ve tercihler)"/></CheckBox>
+                    <TextBlock Text="{loc:T setup.uninstall_question}" FontFamily="{StaticResource Display}" FontSize="21" FontWeight="Light"/>
+                    <TextBlock Text="{loc:T setup.uninstall_body}" Foreground="{StaticResource Muted}" TextWrapping="Wrap" Margin="0,10,0,18"/>
+                    <CheckBox x:Name="OptSettings" Style="{StaticResource Check}"><TextBlock Text="{loc:T setup.remove_settings}"/></CheckBox>
                 </StackPanel>
 
                 <!-- progress -->
                 <StackPanel x:Name="PageWork" Visibility="Collapsed" VerticalAlignment="Center">
-                    <TextBlock Text="Kaldırılıyor" FontFamily="{StaticResource Display}" FontSize="21" FontWeight="Light"/>
+                    <TextBlock Text="{loc:T setup.uninstalling}" FontFamily="{StaticResource Display}" FontSize="21" FontWeight="Light"/>
                     <TextBlock x:Name="StepText" Text="" Foreground="{StaticResource Muted}" Margin="0,8,0,0"/>
                     <Border Height="4" CornerRadius="2" Background="{StaticResource Line}" Margin="0,18,0,0">
                         <Border x:Name="Bar" Height="4" CornerRadius="2" Background="{StaticResource Accent}" HorizontalAlignment="Left" Width="0"/>
@@ -38,14 +38,14 @@
 
                 <!-- done -->
                 <StackPanel x:Name="PageDone" Visibility="Collapsed" VerticalAlignment="Center">
-                    <TextBlock Text="Kaldırıldı" FontFamily="{StaticResource Display}" FontSize="42" FontWeight="Light"/>
-                    <TextBlock Text="GPU ve fan ayarları Windows'un varsayılanına döndü." Foreground="{StaticResource Muted}" Margin="0,10,0,0"/>
+                    <TextBlock Text="{loc:T setup.uninstalled}" FontFamily="{StaticResource Display}" FontSize="42" FontWeight="Light"/>
+                    <TextBlock Text="{loc:T setup.uninstalled_body}" Foreground="{StaticResource Muted}" Margin="0,10,0,0"/>
                 </StackPanel>
             </Grid>
 
             <Grid Grid.Row="2" Margin="32,0,32,26">
-                <Button x:Name="BtnCancel" Content="İptal" Style="{StaticResource Btn}" HorizontalAlignment="Left" Click="Close_Click"/>
-                <Button x:Name="BtnNext" Content="Kaldır" Style="{StaticResource PrimaryBtn}" HorizontalAlignment="Right" MinWidth="104" Click="Remove_Click"/>
+                <Button x:Name="BtnCancel" Content="{loc:T common.abort}" Style="{StaticResource Btn}" HorizontalAlignment="Left" Click="Close_Click"/>
+                <Button x:Name="BtnNext" Content="{loc:T common.uninstall}" Style="{StaticResource PrimaryBtn}" HorizontalAlignment="Right" MinWidth="104" Click="Remove_Click"/>
             </Grid>
         </Grid>
     </Border>
