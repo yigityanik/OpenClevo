@@ -3,5 +3,6 @@
     <Project Path="src/OpenClevo.App/OpenClevo.App.csproj" />
     <Project Path="src/OpenClevo.Core/OpenClevo.Core.csproj" />
     <Project Path="src/OpenClevo.Probe/OpenClevo.Probe.csproj" />
+    <Project Path="src/OpenClevo.Setup/OpenClevo.Setup.csproj" />
   </Folder>
 </Solution>

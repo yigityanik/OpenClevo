@@ -120,7 +120,9 @@ static class NvidiaPower
         {
             var src = AppContext.BaseDirectory.TrimEnd('\\');
             Directory.CreateDirectory(HelperDir);
-            foreach (var f in Directory.GetFiles(src, "*", SearchOption.AllDirectories))
+            bool same = string.Equals(Path.GetFullPath(src), Path.GetFullPath(HelperDir), StringComparison.OrdinalIgnoreCase);
+            // already running from the install folder (the setup program copied it): only register the tasks
+            foreach (var f in same ? [] : Directory.GetFiles(src, "*", SearchOption.AllDirectories))
             {
                 if (f.EndsWith(".pdb", StringComparison.OrdinalIgnoreCase)) continue;
                 var target = Path.Combine(HelperDir, Path.GetRelativePath(src, f));
