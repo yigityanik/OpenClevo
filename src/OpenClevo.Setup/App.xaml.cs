@@ -12,6 +12,8 @@ public partial class App : Application
         base.OnStartup(e);
         // a copy named Uninstall.exe (double-clicked in the install folder) also opens the removal window
         bool uninstall = e.Args.Contains("--uninstall") || Path.GetFileName(Environment.ProcessPath) == "Uninstall.exe";
+        // the removal window speaks the installed language; the installer always starts in English
+        if (!uninstall) Localization.Loc.Set("en");
         Window w = uninstall ? new UninstallWindow() : new MainWindow();
         MainWindow = w;
         w.Show();

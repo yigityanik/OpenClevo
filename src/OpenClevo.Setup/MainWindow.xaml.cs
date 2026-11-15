@@ -60,7 +60,7 @@ public partial class MainWindow : Window
             {
                 Text = Loc.NativeName(code), TextAlignment = TextAlignment.Center, FontFamily = face,
                 FontWeight = FontWeights.Light, FontSize = VBig, Foreground = brush,
-                Height = RowH, VerticalAlignment = VerticalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,   // no fixed height: a TextBlock clips its text to it
                 RenderTransformOrigin = new Point(0.5, 0.5), RenderTransform = scale,
             };
             _words.Add(word); _wordBrushes.Add(brush); _wordScales.Add(scale);
@@ -83,8 +83,9 @@ public partial class MainWindow : Window
             VDots.Children.Add(dot);
         }
 
+        // English is selected from the start (App sets it), so Next is available right away
         _sel = Math.Max(0, Array.IndexOf(Loc.Languages, lang ?? Loc.Current));
-        _picked = lang != null;
+        _picked = true;
         Refresh(animate: false);
         Loaded += (_, _) => Refresh(animate: false);   // positioned again once the window has its real size
         StartWheelHint();
