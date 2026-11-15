@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 
 namespace OpenClevo.Setup;
@@ -8,7 +9,9 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-        Window w = e.Args.Contains("--uninstall") ? new UninstallWindow() : new MainWindow();
+        // a copy named Uninstall.exe (double-clicked in the install folder) also opens the removal window
+        bool uninstall = e.Args.Contains("--uninstall") || Path.GetFileName(Environment.ProcessPath) == "Uninstall.exe";
+        Window w = uninstall ? new UninstallWindow() : new MainWindow();
         MainWindow = w;
         w.Show();
     }

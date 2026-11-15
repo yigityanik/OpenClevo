@@ -48,7 +48,16 @@ static class Installer
         }
 
         // this program doubles as the uninstaller (started with --uninstall from Apps & features)
-        File.Copy(Environment.ProcessPath!, UninstallerPath, overwrite: true);
+        // the uninstaller is this program under another name: it needs its own dll and config next to it
+        var self = Environment.ProcessPath!;
+        var selfDir = Path.GetDirectoryName(self)!;
+        var selfName = Path.GetFileNameWithoutExtension(self);
+        File.Copy(self, UninstallerPath, overwrite: true);
+        foreach (var ext in new[] { ".dll", ".runtimeconfig.json", ".deps.json" })
+        {
+            var from = Path.Combine(selfDir, selfName + ext);
+            if (File.Exists(from)) File.Copy(from, Path.Combine(TargetDir, selfName + ext), overwrite: true);
+        }
 
         progress("NVIDIA görevleri kaydediliyor…", 0.7);
         var sid = WindowsIdentity.GetCurrent().User?.Value ?? throw new InvalidOperationException("Kullanıcı kimliği okunamadı.");
@@ -117,7 +126,11 @@ static class Installer
 
         progress("Kısayollar ve başlangıç kaydı siliniyor…", 0.6);
         using (var run = Registry.CurrentUser.OpenSubKey(RunKey, writable: true))
-            run?.DeleteValue("OpenClevo", throwOnMissingValue: false);
+        {
+            Log("startup key opened: " + (run != null));
+            if (run?.GetValue("OpenClevo") != null) { run.DeleteValue("OpenClevo"); Log("startup value removed"); }
+            else Log("startup value not present");
+        }
         TryDelete(StartMenuShortcut);
         TryDelete(DesktopShortcut);
 
@@ -127,9 +140,17 @@ static class Installer
 
         progress("Dosyalar siliniyor…", 0.9);
         // cmd outlives this process, waits a moment (this program is still running), then removes the folder
-        var cmd = $"/c ping 127.0.0.1 -n 3 >nul & rmdir /s /q \"{TargetDir}\"";
-        Process.Start(new ProcessStartInfo("cmd.exe", cmd) { UseShellExecute = false, CreateNoWindow = true });
+        var bat = Path.Combine(Path.GetTempPath(), "openclevo-cleanup.cmd");
+        File.WriteAllText(bat, "@echo off\r\nset /a n=0\r\n:loop\r\nrmdir /s /q \"" + TargetDir + "\" 2>nul\r\nif not exist \"" + TargetDir + "\" goto done\r\nset /a n+=1\r\nif %n% gtr 90 goto done\r\nping -n 2 127.0.0.1 >nul\r\ngoto loop\r\n:done\r\ndel \"%~f0\"\r\n");
+        Process.Start(new ProcessStartInfo("cmd.exe", "/c \"" + bat + "\"") { UseShellExecute = false, CreateNoWindow = true });
+        Log("cleanup started for " + TargetDir);
         progress("Kaldırıldı", 1.0);
+    }
+
+    static void Log(string line)
+    {
+        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "OpenClevo-uninstall.log"), DateTime.Now.ToString("HH:mm:ss") + "  " + line + Environment.NewLine); }
+        catch { }
     }
 
     static void Schtasks(string args)
