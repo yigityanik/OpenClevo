@@ -235,7 +235,7 @@
             <Grid x:Name="KbPanel" Visibility="Collapsed">
                 <Border Style="{StaticResource Group}" HorizontalAlignment="Center" VerticalAlignment="Center" Width="860" Margin="0,0,0,24">
                     <StackPanel>
-                        <c:KeyboardPreview x:Name="KbPreview" MaxWidth="620" HorizontalAlignment="Center" Margin="26,24,26,20"/>
+                        <c:KeyboardPreview x:Name="KbPreview" MaxWidth="480" HorizontalAlignment="Center" Margin="26,24,26,20"/>
 
                         <Border Style="{StaticResource Hairline}" Margin="26,0"/>
 
@@ -308,6 +308,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
                     <TextBlock Text="Şarj ayarları" FontFamily="{StaticResource Display}" FontSize="21" FontWeight="Light" Margin="12,0,0,6"/>
@@ -358,7 +359,14 @@
                             </Grid>
                         </StackPanel>
                     </Border>
-                    <Button Grid.Row="4" x:Name="ChargeApplyBtn" Style="{StaticResource PrimaryBtn}" Content="Uygula" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,18,0,0" Click="ChargeApply_Click" IsEnabled="False"/>
+                    <Border Grid.Row="4" Style="{StaticResource Group}" Margin="0,14,0,0">
+                        <Grid Margin="26,16">
+                            <TextBlock Text="GPU modu"/>
+                            <TextBlock x:Name="GpuModeText" Text="--" Foreground="{DynamicResource Muted}" HorizontalAlignment="Right"/>
+                        </Grid>
+                    </Border>
+
+                    <Button Grid.Row="5" x:Name="ChargeApplyBtn" Style="{StaticResource PrimaryBtn}" Content="Uygula" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,18,0,0" Click="ChargeApply_Click" IsEnabled="False"/>
                 </Grid>
             </Grid>
         </Grid>

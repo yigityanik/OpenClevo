@@ -61,9 +61,9 @@ public sealed class KeyboardEffectEngine : IDisposable
     public void Stop(bool remember = true)
     {
         lock (_gate) _effect = SoftEffect.None;
+        LastFrame = null;
         _run = false;
         _thread?.Join(500);
-        LastFrame = null;
         _thread = null;
         if (remember) Saved = SoftEffect.None;
     }
@@ -184,6 +184,7 @@ public sealed class KeyboardEffectEngine : IDisposable
                 default: frame = baseC; break;
             }
 
+            LastFrame = frame;
             try
             {
                 br ??= AcpiBridge.Open();
@@ -197,7 +198,6 @@ public sealed class KeyboardEffectEngine : IDisposable
                     br.SetKeyboardColors(type, send[0], send[1], send[2]);
                     for (int i = 0; i < zones; i++) if (send[i] != null) last[i] = send[i];
                 }
-                LastFrame = frame;
             }
             catch
             {

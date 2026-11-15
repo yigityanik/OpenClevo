@@ -47,7 +47,7 @@ public partial class MainWindow : Window
         BuildModeTiles();
         BuildKeyboardPanel();
         Controls.SlideThumb.Attach(FanHost, FanThumb);
-        KbPanel.IsVisibleChanged += (_, _) => { if (KbPanel.IsVisible) { _kbSmooth = []; _kbTimer.Start(); } else _kbTimer.Stop(); };
+        KbPanel.IsVisibleChanged += (_, _) => { if (KbPanel.IsVisible) _kbTimer.Start(); else _kbTimer.Stop(); };
         _kbTimer.Tick += (_, _) => TickKeyboardPreview();
         _offsetTimer.Tick += (_, _) => ApplyOffset();
         SysPanel.IsVisibleChanged += (_, _) => { if (SysPanel.IsVisible) { RefreshSystemSwitches(); _sysTimer.Start(); } else _sysTimer.Stop(); };
@@ -129,13 +129,13 @@ public partial class MainWindow : Window
 
     void OnSensors()
     {
+        RefreshBattery();
         bool ok = _hw.Error == null;
         StatusPill.Visibility = ok ? Visibility.Collapsed : Visibility.Visible;   // silent when all is well
         StatusPill.ToolTip = _hw.Error;
 
         Show(1, CpuTemp, CpuRpm, CpuDuty, CpuSpark, CpuCurve, CpuFan);
         Show(2, GpuTemp, GpuRpm, GpuDuty, GpuSpark, GpuCurve, GpuFan);
-        if (BatPanel.IsVisible) RefreshBattery();
     }
 
     void Show(int idx, TextBlock temp, TextBlock rpm, TextBlock duty, Controls.Sparkline spark, Controls.CurveEditor curve, Controls.FanIcon fan)
@@ -174,6 +174,14 @@ public partial class MainWindow : Window
         GpuCurve.Curve = _hw.Curves.FirstOrDefault(c => c.Index == 2);
         UpdateCurveButtons();
 
+        GpuModeText.Text = _hw.Gpu switch
+        {
+            GpuMode.MSHybrid => "MSHybrid (Optimus)",
+            GpuMode.DiscreteOnly => "Yalnızca harici GPU",
+            GpuMode.IntegratedOnly => "Yalnızca dahili GPU",
+            GpuMode.Dynamic => "Dinamik",
+            _ => "Bilinmiyor",
+        };
         LoadCharger();
         LoadKeyboard();
     }
@@ -246,7 +254,6 @@ public partial class MainWindow : Window
         FanPanel.Visibility = TabFans.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         KbPanel.Visibility = TabKb.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         BatPanel.Visibility = TabBat.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-        if (BatPanel.IsVisible) RefreshBattery();
         SysPanel.Visibility = TabSys.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
     }
 
@@ -304,7 +311,7 @@ public partial class MainWindow : Window
     };
 
     // ---- live keyboard preview: mirrors the running effect, or simulates the hovered one ----
-    readonly System.Windows.Threading.DispatcherTimer _kbTimer = new(System.Windows.Threading.DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(16) };
+    readonly System.Windows.Threading.DispatcherTimer _kbTimer = new(System.Windows.Threading.DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(40) };
     readonly System.Diagnostics.Stopwatch _simClock = System.Diagnostics.Stopwatch.StartNew();
     SoftEffect _hoverSim = SoftEffect.None;
 
@@ -339,23 +346,8 @@ public partial class MainWindow : Window
         else if (!_singleZone && SimFor(_kbEffect) is var s && s != SoftEffect.None)
             frame = KeyboardEffectEngine.Simulate(s, t, baseC, false, cpu, gpu);
 
-        if (_kbSmooth.Length != frame.Length) _kbSmooth = new double[frame.Length][];
-        var shown = new Color[frame.Length];
-        for (int i = 0; i < frame.Length; i++)
-        {
-            double[] target = [frame[i].R, frame[i].G, frame[i].B];
-            var cur = _kbSmooth[i] ??= (double[])target.Clone();
-            for (int j = 0; j < 3; j++)
-            {
-                cur[j] += (target[j] - cur[j]) * (target[j] > cur[j] ? 0.55 : 0.22);
-                if (Math.Abs(target[j] - cur[j]) < 0.5) cur[j] = target[j];
-            }
-            shown[i] = Color.FromRgb((byte)Math.Round(cur[0]), (byte)Math.Round(cur[1]), (byte)Math.Round(cur[2]));
-        }
-        var prev = KbPreview.Colors;
-        if (prev == null || prev.Length != shown.Length || !prev.SequenceEqual(shown)) KbPreview.Colors = shown;
+        KbPreview.Colors = frame.Select(c => Color.FromRgb(c.R, c.G, c.B)).ToArray();
     }
-    double[][] _kbSmooth = [];
     void BuildKeyboardPanel()
     {
         KbPreview.ZoneClicked += z =>
@@ -553,7 +545,6 @@ public partial class MainWindow : Window
         StopSlider.Value = Math.Clamp(c.StopPercent, 50, 100);
         _loadingCharger = false;
         UpdateChargeUi(dirty: false);
-        RefreshBattery();
     }
 
     void UpdateChargeUi(bool dirty)
