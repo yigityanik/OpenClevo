@@ -9,6 +9,14 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>OpenClevo</AssemblyName>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationIcon>..\..\assets\openclevo.ico</ApplicationIcon>
+    <!-- what Windows shows in the file's Details tab and in Apps &amp; features -->
+    <Product>OpenClevo</Product>
+    <AssemblyTitle>OpenClevo</AssemblyTitle>
+    <Company>Yiğit Emre Yanık</Company>
+    <Authors>Yiğit Emre Yanık</Authors>
+    <Copyright>© 2026 Yiğit Emre Yanık</Copyright>
+    <Description>Open-source control for Clevo laptops: fans, power modes and keyboard backlight.</Description>
   </PropertyGroup>
 
   <ItemGroup>

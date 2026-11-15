@@ -7,6 +7,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <AssemblyName>OpenClevo-Setup</AssemblyName>
+    <ApplicationIcon>..\..\assets\openclevo.ico</ApplicationIcon>
+    <Product>OpenClevo Setup</Product>
+    <AssemblyTitle>OpenClevo Setup</AssemblyTitle>
+    <Company>Yiğit Emre Yanık</Company>
+    <Authors>Yiğit Emre Yanık</Authors>
+    <Copyright>© 2026 Yiğit Emre Yanık</Copyright>
+    <Description>Installer for OpenClevo.</Description>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <SatelliteResourceLanguages>tr</SatelliteResourceLanguages>

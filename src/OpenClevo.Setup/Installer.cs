@@ -97,7 +97,7 @@ static class Installer
         using var k = Registry.LocalMachine.CreateSubKey(UninstallKey);
         k.SetValue("DisplayName", "OpenClevo");
         k.SetValue("DisplayVersion", typeof(Installer).Assembly.GetName().Version?.ToString(3) ?? "1.0.0");
-        k.SetValue("Publisher", "OpenClevo");
+        k.SetValue("Publisher", "Yiğit Emre Yanık");
         k.SetValue("InstallLocation", TargetDir);
         k.SetValue("DisplayIcon", TargetExe + ",0");
         k.SetValue("UninstallString", $"\"{UninstallerPath}\" --uninstall");
