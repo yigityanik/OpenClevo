@@ -1,3 +1,4 @@
+using OpenClevo.Localization;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
@@ -20,7 +21,7 @@ sealed class TrayIcon : IDisposable
     {
         _hw = hw;
         var menu = new ContextMenuStrip();
-        menu.Items.Add("OpenClevo'yu aç", null, (_, _) => show());
+        menu.Items.Add(Loc.T("tray.open"), null, (_, _) => show());
         menu.Items.Add(new ToolStripSeparator());
         foreach (var (mode, name) in Ui.Modes)
         {
@@ -30,7 +31,7 @@ sealed class TrayIcon : IDisposable
             menu.Items.Add(item);
         }
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Çıkış", null, (_, _) => exit());
+        menu.Items.Add(Loc.T("tray.exit"), null, (_, _) => exit());
         _icon.ContextMenuStrip = menu;
         _icon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) show(); };
         _icon.Visible = true;
@@ -50,7 +51,7 @@ sealed class TrayIcon : IDisposable
     {
         foreach (var (m, item) in _modeItems) item.Checked = m == _hw.PowerMode;
         var lines = new List<string> { _hw.PowerMode is { } pm ? "OpenClevo · " + Ui.ModeName(pm) : "OpenClevo" };
-        if (_hw.Error != null) lines.Add("Sürücüye erişilemiyor");
+        if (_hw.Error != null) lines.Add(Loc.T("status.driver"));
         else lines.AddRange(_hw.Fans.Select(f => $"{Ui.FanName(f.Index)} {f.TemperatureC}°C · {f.Rpm} rpm"));
         var tip = string.Join("\n", lines);
         _icon.Text = tip.Length > 127 ? tip[..127] : tip;

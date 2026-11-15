@@ -1,3 +1,4 @@
+using OpenClevo.Localization;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
@@ -89,7 +90,7 @@ public sealed class CurveEditor : FrameworkElement
             else dc.DrawLine(gridPen, new Point(x, p.Bottom), new Point(x, p.Bottom + 4));
         }
 
-        if (_curve == null) { Label(dc, "Eğri okunamadı", new Point(p.Left + p.Width / 2, p.Top + p.Height / 2 - 8), muted, 13, center: true); return; }
+        if (_curve == null) { Label(dc, Loc.T("fan.curve_unreadable"), new Point(p.Left + p.Width / 2, p.Top + p.Height / 2 - 8), muted, 13, center: true); return; }
 
         var pts = Points(_curve);
         var accent = new SolidColorBrush(Accent);

@@ -1,3 +1,4 @@
+using OpenClevo.Localization;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -9,16 +10,15 @@ namespace OpenClevo.App;
 
 public partial class MainWindow : Window
 {
-    const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
     const string AppKey = @"Software\OpenClevo";
 
     // order shown in the mode selector
     static readonly (PowerMode Mode, string Desc)[] ModeInfo =
     [
-        (PowerMode.Performance, "En yüksek güç ve soğutma"),
-        (PowerMode.Entertainment, "Dengeli günlük kullanım"),
-        (PowerMode.Quiet, "Düşük gürültü, sınırlı güç"),
-        (PowerMode.PowerSaving, "Pil ömrü öncelikli"),
+        (PowerMode.Performance, Loc.T("power.desc.performance")),
+        (PowerMode.Entertainment, Loc.T("power.desc.entertainment")),
+        (PowerMode.Quiet, Loc.T("power.desc.quiet")),
+        (PowerMode.PowerSaving, Loc.T("power.desc.saving")),
     ];
 
     // one strong colour per mode: the sliding tile in the mode bar takes it
@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     public MainWindow(HardwareService hw, KeyboardEffectEngine kb)
     {
         InitializeComponent();
+        FlowDirection = OpenClevo.Localization.Loc.Flow;   // Arabic mirrors the window
         _hw = hw;
         _kb = kb;
         FitToScreen();
@@ -52,9 +53,6 @@ public partial class MainWindow : Window
         _offsetTimer.Tick += (_, _) => ApplyOffset();
         SysPanel.IsVisibleChanged += (_, _) => { if (SysPanel.IsVisible) { RefreshSystemSwitches(); _sysTimer.Start(); } else _sysTimer.Stop(); };
         _sysTimer.Tick += (_, _) => RefreshSystemSwitches();
-
-        TrayToggle.IsChecked = CloseToTray;
-        StartupToggle.IsChecked = Registry.CurrentUser.OpenSubKey(RunKey)?.GetValue("OpenClevo") != null;
 
         CpuCurve.CurveEdited += c => { _cpuEdit = c; UpdateCurveButtons(); };
         GpuCurve.CurveEdited += c => { _gpuEdit = c; UpdateCurveButtons(); };
@@ -75,7 +73,7 @@ public partial class MainWindow : Window
         Height = Math.Round(h);
     }
 
-    static bool CloseToTray
+    internal static bool CloseToTray
     {
         get => (Registry.CurrentUser.OpenSubKey(AppKey)?.GetValue("CloseToTray") as int? ?? 1) == 1;
         set { using var k = Registry.CurrentUser.CreateSubKey(AppKey); k.SetValue("CloseToTray", value ? 1 : 0, RegistryValueKind.DWord); }
@@ -103,7 +101,7 @@ public partial class MainWindow : Window
         bool gpuOff = false;
         if (mode == PowerMode.PowerSaving && prev != PowerMode.PowerSaving && NvidiaPower.IsOn == true)
         {
-            int r = Dialog.Ask(this, "Güç tasarrufu", "NVIDIA GPU da kapatılsın mı?\n\nNVIDIA GPU'yu kullanan uygulamalar kapanır.", "GPU'yu kapat", "Yalnızca mod", "Vazgeç");
+            int r = Dialog.Ask(this, Loc.T("power.saving"), Loc.T("power.gpu_question"), Loc.T("power.gpu_off"), Loc.T("power.mode_only"), Loc.T("common.cancel"));
             if (r is 2 or -1) { OnSettings(); return; }
             gpuOff = r == 0;
         }
@@ -112,7 +110,7 @@ public partial class MainWindow : Window
         if (_busy) return;
         _busy = true;
         try { await Task.Run(() => { using var br = AcpiBridge.Open(); br.SetPowerMode(mode); }); }
-        catch (Exception ex) { Dialog.Info(this, $"Güç modu uygulanamadı.\n\n{ex.Message}"); }
+        catch (Exception ex) { Dialog.Info(this, Loc.F("power.apply_failed", ex.Message)); }
         await Task.Delay(800);
         _busy = false;
         _hw.ReloadSettings();
@@ -150,7 +148,7 @@ public partial class MainWindow : Window
         rpm.Text = $"{f.Rpm:N0} rpm";
         duty.Text = $"fan %{f.DutyPercent}";
         curve.LiveTemperature = f.TemperatureC;
-        (idx == 1 ? CpuMhz : GpuMhz).Text = idx == 2 && NvidiaPower.IsOn == false ? "GPU kapalı"
+        (idx == 1 ? CpuMhz : GpuMhz).Text = idx == 2 && NvidiaPower.IsOn == false ? Loc.T("gpu.off")
             : (idx == 1 ? _hw.CpuMhz : _hw.GpuMhz) is > 0 and var mhz ? $"{mhz:N0} MHz" : "";
         fan.Rpm = f.Rpm;
         if (_hw.History.TryGetValue(idx, out var h))
@@ -174,14 +172,6 @@ public partial class MainWindow : Window
         GpuCurve.Curve = _hw.Curves.FirstOrDefault(c => c.Index == 2);
         UpdateCurveButtons();
 
-        GpuModeText.Text = _hw.Gpu switch
-        {
-            GpuMode.MSHybrid => "MSHybrid (Optimus)",
-            GpuMode.DiscreteOnly => "Yalnızca harici GPU",
-            GpuMode.IntegratedOnly => "Yalnızca dahili GPU",
-            GpuMode.Dynamic => "Dinamik",
-            _ => "Bilinmiyor",
-        };
         LoadCharger();
         LoadKeyboard();
     }
@@ -209,14 +199,14 @@ public partial class MainWindow : Window
     {
         if (!NvidiaPower.HelperReady)
         {
-            int c = Dialog.Ask(this, "Bir kerelik kurulum",
-                "NVIDIA GPU'yu açıp kapatmak yönetici yetkisi gerektirir. Windows şimdi bir kez izin soracak, sonrasında bir daha sormayacak.\n\nOpenClevo'nun bir kopyası Program Files'a kurulur ve yalnızca GPU'yu açıp kapatabilen iki görev eklenir.",
-                "Devam", "Vazgeç");
+            int c = Dialog.Ask(this, Loc.T("nvidia.setup_title"),
+                Loc.T("nvidia.setup_body"),
+                Loc.T("common.continue"), Loc.T("common.cancel"));
             if (c != 0) return false;
-            if (!await NvidiaPower.InstallHelperAsync()) { Dialog.Info(this, "Kurulum tamamlanamadı. İzin verilmedi ya da bir hata oldu."); return false; }
+            if (!await NvidiaPower.InstallHelperAsync()) { Dialog.Info(this, Loc.T("nvidia.setup_failed")); return false; }
         }
         bool ok = await NvidiaPower.SetAsync(on);
-        if (!ok) Dialog.Info(this, on ? "NVIDIA GPU açılamadı." : "NVIDIA GPU kapatılamadı.");
+        if (!ok) Dialog.Info(this, on ? Loc.T("nvidia.on_failed") : Loc.T("nvidia.off_failed"));
         return ok;
     }
 
@@ -261,35 +251,35 @@ public partial class MainWindow : Window
 
     static readonly (string Name, Rgb Color)[] Palette =
     [
-        ("Beyaz", new(255, 255, 255)), ("Kırmızı", new(255, 0, 0)), ("Turuncu", new(255, 90, 0)), ("Sarı", new(255, 210, 0)),
-        ("Yeşil", new(0, 255, 0)), ("Turkuaz", new(0, 255, 200)), ("Mavi", new(0, 0, 255)), ("Mor", new(140, 0, 255)), ("Pembe", new(255, 0, 150)),
+        (Loc.T("color.white"), new(255, 255, 255)), (Loc.T("color.red"), new(255, 0, 0)), (Loc.T("color.orange"), new(255, 90, 0)), (Loc.T("color.yellow"), new(255, 210, 0)),
+        (Loc.T("color.green"), new(0, 255, 0)), (Loc.T("color.turquoise"), new(0, 255, 200)), (Loc.T("color.blue"), new(0, 0, 255)), (Loc.T("color.purple"), new(140, 0, 255)), (Loc.T("color.pink"), new(255, 0, 150)),
     ];
 
     static readonly (KbEffect Effect, string Name)[] HwEffectNames =
     [
-        (KbEffect.Static, "Sabit"), (KbEffect.Breathe, "Nefes"), (KbEffect.Cycle, "Renk döngüsü"), (KbEffect.Wave, "Dalga"),
-        (KbEffect.Dance, "Dans"), (KbEffect.Tempo, "Tempo"), (KbEffect.Flash, "Flaş"), (KbEffect.Random, "Rastgele"),
+        (KbEffect.Static, Loc.T("kb.fx.static")), (KbEffect.Breathe, Loc.T("kb.fx.breathe")), (KbEffect.Cycle, Loc.T("kb.fx.cycle")), (KbEffect.Wave, Loc.T("kb.fx.wave")),
+        (KbEffect.Dance, Loc.T("kb.fx.dance")), (KbEffect.Tempo, Loc.T("kb.fx.tempo")), (KbEffect.Flash, Loc.T("kb.fx.flash")), (KbEffect.Random, Loc.T("kb.fx.random")),
     ];
 
     // Single-zone keyboards (type 6, verified on this G5 KF): firmware effects do nothing, so every effect is ours.
     static readonly (SoftEffect Effect, string Name, string Tip)[] SwEffectsSingle =
     [
-        (SoftEffect.Breathe, "Nefes", "Seçtiğin renkte yumuşak nefes (5 sn)"),
-        (SoftEffect.Cycle, "Renk döngüsü", "Tüm renkler arasında yumuşak geçiş (12 sn'de bir tur)"),
-        (SoftEffect.RandomFade, "Rastgele geçiş", "Rastgele renkler arasında yavaşça geçer"),
-        (SoftEffect.Flash, "Flaş", "Seçtiğin renkte saniyede bir yanıp söner"),
-        (SoftEffect.Temperature, "Sıcaklığa göre", "Klavye, CPU ve GPU'dan sıcak olanın rengini alır: mavi ≤45° → yeşil 60° → turuncu 75° → kırmızı ≥88°"),
-        (SoftEffect.Audio, "Sese tepki", "Seçtiğin renk, bas vuruşlarına göre parlar (ses kaydedilmez, yalnızca bellekte işlenir)"),
-        (SoftEffect.AudioCycle, "Ses + renk döngüsü", "Renk sürekli döner ve her bas vuruşunda bir adım atlar; parlaklık basa göre değişir"),
+        (SoftEffect.Breathe, Loc.T("kb.fx.breathe"), Loc.T("kb.tip.breathe")),
+        (SoftEffect.Cycle, Loc.T("kb.fx.cycle"), Loc.T("kb.tip.cycle")),
+        (SoftEffect.RandomFade, Loc.T("kb.fx.random_fade"), Loc.T("kb.tip.random")),
+        (SoftEffect.Flash, Loc.T("kb.fx.flash"), Loc.T("kb.tip.flash")),
+        (SoftEffect.Temperature, Loc.T("kb.fx.temperature"), Loc.T("kb.tip.temperature")),
+        (SoftEffect.Audio, Loc.T("kb.fx.audio"), Loc.T("kb.tip.audio")),
+        (SoftEffect.AudioCycle, Loc.T("kb.fx.audio_cycle"), Loc.T("kb.tip.audio_cycle")),
     ];
 
     static readonly (SoftEffect Effect, string Name, string Tip)[] SwEffectsMulti =
     [
-        (SoftEffect.Temperature, "Sıcaklığa göre", "Sol ve orta bölge CPU, sağ bölge GPU sıcaklığını gösterir: mavi → yeşil → turuncu → kırmızı"),
-        (SoftEffect.Cycle, "Gökkuşağı akışı", "Renkler üç bölge arasında yumuşakça akar"),
-        (SoftEffect.Breathe, "Yumuşak nefes", "Seçtiğin renklerde yavaş, yumuşak nefes"),
-        (SoftEffect.Audio, "Sese tepki", "Seçtiğin renkler, bas vuruşlarına göre parlar"),
-        (SoftEffect.AudioCycle, "Ses + renk döngüsü", "Renkler döner ve her bas vuruşunda bir adım atlar; parlaklık basa göre değişir"),
+        (SoftEffect.Temperature, Loc.T("kb.fx.temperature"), Loc.T("kb.tip.temperature_multi")),
+        (SoftEffect.Cycle, Loc.T("kb.fx.rainbow"), Loc.T("kb.tip.rainbow_multi")),
+        (SoftEffect.Breathe, Loc.T("kb.fx.soft_breathe"), Loc.T("kb.tip.breathe_multi")),
+        (SoftEffect.Audio, Loc.T("kb.fx.audio"), Loc.T("kb.tip.audio_multi")),
+        (SoftEffect.AudioCycle, Loc.T("kb.fx.audio_cycle"), Loc.T("kb.tip.audio_cycle_multi")),
     ];
 
     (SoftEffect Effect, string Name, string Tip)[] SwEffectNames => _singleZone ? SwEffectsSingle : SwEffectsMulti;
@@ -365,22 +355,22 @@ public partial class MainWindow : Window
             b.Click += (_, _) => PickColor(c);
             Swatches.Children.Add(b);
         }
-        var custom = new Button { Style = (Style)FindResource("Btn"), Content = "Özel renk…", Height = 30, FontSize = 12 };
+        var custom = new Button { Style = (Style)FindResource("Btn"), Content = Loc.T("kb.custom_color"), Height = 30, FontSize = 12 };
         custom.Click += (_, _) => PickCustomColor();
         Swatches.Children.Add(custom);
 
-        string[] levels = ["Kapalı", "1", "2", "3", "4"];
+        string[] levels = [Loc.T("common.off"), "1", "2", "3", "4"];
         for (int i = 0; i < levels.Length; i++)
         {
             int level = i;
             var rb = new RadioButton { Style = (Style)FindResource("Segment"), GroupName = "kbbright", Content = levels[i] };
-            rb.Click += (_, _) => { KbPreview.Brightness = level; KeyboardIdle.SavedBrightness = level; KbAct(() => _hw.SetKeyboardBrightness(level), "Parlaklık"); };
+            rb.Click += (_, _) => { KbPreview.Brightness = level; KeyboardIdle.SavedBrightness = level; KbAct(() => _hw.SetKeyboardBrightness(level), Loc.T("kb.brightness")); };
             _brightButtons.Add(rb);
             BrightnessBar.Children.Add(rb);
         }
         KbPreview.Brightness = KeyboardIdle.SavedBrightness;
 
-        foreach (var (label, sec) in new[] { ("Hiçbir zaman", 0), ("10 sn", 10), ("30 sn", 30), ("1 dk", 60), ("5 dk", 300) })
+        foreach (var (label, sec) in new[] { (Loc.T("kb.never"), 0), (Loc.T("kb.t10"), 10), (Loc.T("kb.t30"), 30), (Loc.T("kb.t60"), 60), (Loc.T("kb.t300"), 300) })
         {
             var rb = new RadioButton { Style = (Style)FindResource("Segment"), GroupName = "kbtimeout", Content = label };
             rb.Click += (_, _) => { _pTimeout = sec; RefreshKeyboardUi(); };
@@ -441,8 +431,8 @@ public partial class MainWindow : Window
             AllZonesToggle.IsChecked = true;
             HwHeader.Visibility = HwEffects.Visibility = Visibility.Collapsed;
             SwHeader.Margin = new Thickness(0);
-            SwHeaderText.Text = "Efektler";
-            var stat = Chip("Sabit", "kbfx");
+            SwHeaderText.Text = Loc.T("kb.effects");
+            var stat = Chip(Loc.T("kb.fx.static"), "kbfx");
             Hover(stat, SoftEffect.None);
             stat.Click += (_, _) => SelectHwEffect(KbEffect.Static);
             _hwButtons[KbEffect.Static] = stat;
@@ -469,7 +459,7 @@ public partial class MainWindow : Window
         }
     }
 
-    // Everything on this page except brightness is staged: selections only change the preview until "Uygula".
+    // Everything on this page except brightness is staged: selections only change the preview until Loc.T("common.apply").
     SoftEffect _pSw = SoftEffect.None, _appliedSw = SoftEffect.None;
     KbEffect _appliedHw = KbEffect.Static;
     Rgb[] _appliedZones = [new(0, 0, 255), new(0, 0, 255), new(0, 0, 255)];
@@ -526,12 +516,12 @@ public partial class MainWindow : Window
         }
         KeyboardIdle.TimeoutSeconds = _pTimeout;
         _appliedSw = _pSw; _appliedHw = _kbEffect; _appliedZones = _zones.ToArray(); _appliedTimeout = _pTimeout;
-    }, "Klavye ışığı");
+    }, Loc.T("tab.keyboard"));
 
     void KbAct(Action a, string what)
     {
         try { a(); }
-        catch (Exception ex) { Dialog.Info(this, $"{what} uygulanamadı.\n\n{ex.Message}"); }
+        catch (Exception ex) { Dialog.Info(this, Loc.F("common.apply_failed", what, ex.Message)); }
         RefreshKeyboardUi();
     }
     bool _loadingCharger;
@@ -554,8 +544,7 @@ public partial class MainWindow : Window
         bool on = ChargeToggle.IsChecked == true;
         StartSlider.IsEnabled = StopSlider.IsEnabled = on;
         ChargeApplyBtn.IsEnabled = dirty && _hw.Charger != null && !_busy;
-        ChargeRangeText.Text = on ? $"%{StartSlider.Value:0} – %{StopSlider.Value:0}" : "Kapalı";
-        ChargeRangeStatus.Text = on ? "" : "Pil %100'e kadar şarj olur";
+        ChargeRangeText.Text = on ? $"%{StartSlider.Value:0} – %{StopSlider.Value:0}" : Loc.T("common.off");
         ChargeRangeBar.Start = StartSlider.Value;
         ChargeRangeBar.Stop = StopSlider.Value;
         ChargeRangeBar.Active = on;
@@ -571,22 +560,17 @@ public partial class MainWindow : Window
                 || status.BatteryLifePercent is < 0 or > 1)
             {
                 BatteryPercent.Text = "--";
-                BatteryStatus.Text = "";
                 ChargeRangeBar.Level = -1;
                 return;
             }
 
             int percent = (int)Math.Round(status.BatteryLifePercent * 100);
             BatteryPercent.Text = $"%{percent}";
-            BatteryStatus.Text = status.PowerLineStatus == System.Windows.Forms.PowerLineStatus.Online
-                ? (charge.HasFlag(System.Windows.Forms.BatteryChargeStatus.Charging) ? "Şarj oluyor" : "Prize takılı")
-                : "Pilde";
             ChargeRangeBar.Level = percent;
         }
         catch
         {
             BatteryPercent.Text = "--";
-            BatteryStatus.Text = "";
             ChargeRangeBar.Level = -1;
         }
     }
@@ -607,9 +591,9 @@ public partial class MainWindow : Window
     void ChargeApply_Click(object s, RoutedEventArgs e)
     {
         var f = new FlexiCharger(ChargeToggle.IsChecked == true, (int)StartSlider.Value, (int)StopSlider.Value);
-        var text = f.Enabled ? $"Şarj %{f.StartPercent} altında başlayacak, %{f.StopPercent}'de duracak." : "Şarj sınırı kapatılacak (pil %100'e kadar şarj olur).";
-        if (Dialog.Ask(this, "Şarj sınırı", text, "Uygula", "Vazgeç") != 0) return;
-        Act(() => _hw.SetCharger(f), "Şarj sınırı");
+        var text = f.Enabled ? Loc.F("charge.apply_on", f.StartPercent, f.StopPercent) : Loc.T("charge.apply_off");
+        if (Dialog.Ask(this, Loc.T("charge.limit"), text, Loc.T("common.apply"), Loc.T("common.cancel")) != 0) return;
+        Act(() => _hw.SetCharger(f), Loc.T("charge.limit"));
     }
 
     void UpdateCurveButtons()
@@ -624,7 +608,7 @@ public partial class MainWindow : Window
         if (_busy) return;
         _busy = true;
         try { a(); }
-        catch (Exception ex) { Dialog.Info(this, $"{what} uygulanamadı.\n\n{ex.Message}"); }
+        catch (Exception ex) { Dialog.Info(this, Loc.F("common.apply_failed", what, ex.Message)); }
         finally { _busy = false; OnSettings(); }
     }
 
@@ -652,11 +636,11 @@ public partial class MainWindow : Window
     {
         _offsetTimer.Stop();
         int pct = (int)FanOffsetSlider.Value;
-        if (pct != _hw.FanOffset) Act(() => _hw.SetFanOffset(pct), "Fan artışı");
+        if (pct != _hw.FanOffset) Act(() => _hw.SetFanOffset(pct), Loc.T("fan.offset_label"));
     }
 
-    void FanAuto_Click(object s, RoutedEventArgs e) => Act(() => _hw.SetFanMode(FanMode.Auto), "Otomatik fan modu");
-    void FanCustom_Click(object s, RoutedEventArgs e) => Act(() => _hw.SetFanMode(FanMode.Custom), "Özel eğri modu");
+    void FanAuto_Click(object s, RoutedEventArgs e) => Act(() => _hw.SetFanMode(FanMode.Auto), Loc.T("fan.auto_mode"));
+    void FanCustom_Click(object s, RoutedEventArgs e) => Act(() => _hw.SetFanMode(FanMode.Custom), Loc.T("fan.custom_mode"));
 
     void ApplyBtn_Click(object s, RoutedEventArgs e)
     {
@@ -665,20 +649,13 @@ public partial class MainWindow : Window
         if (_gpuEdit != null) list.Add(_gpuEdit);
         if (list.Count == 0) return;
         var summary = string.Join("\n", list.Select(c => $"{Ui.FanName(c.Index)}: {c.T2}° → %{c.D2},  {c.T3}° → %{c.D3}"));
-        if (Dialog.Ask(this, "Eğriyi uygula", $"Bu eğri firmware'e gönderilecek:\n\n{summary}", "Uygula", "Vazgeç") != 0) return;
-        Act(() => _hw.ApplyCurves(list), "Fan eğrisi");
+        if (Dialog.Ask(this, Loc.T("fan.apply_title"), Loc.F("fan.apply_body", summary), Loc.T("common.apply"), Loc.T("common.cancel")) != 0) return;
+        Act(() => _hw.ApplyCurves(list), Loc.T("fan.curve_label"));
     }
 
     void RevertBtn_Click(object s, RoutedEventArgs e) => OnSettings();
 
-    void StartupToggle_Click(object s, RoutedEventArgs e)
-    {
-        using var k = Registry.CurrentUser.CreateSubKey(RunKey);
-        if (StartupToggle.IsChecked == true) k.SetValue("OpenClevo", $"\"{Environment.ProcessPath}\" --tray");
-        else k.DeleteValue("OpenClevo", false);
-    }
-
-    void TrayToggle_Click(object s, RoutedEventArgs e) => CloseToTray = TrayToggle.IsChecked == true;
+    void SettingsBtn_Click(object s, RoutedEventArgs e) => new SettingsWindow { Owner = this }.ShowDialog();
 
     // Fixed-size window: never allow maximize (e.g. via Win+Up or caption double-click).
     protected override void OnStateChanged(EventArgs e)

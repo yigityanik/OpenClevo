@@ -25,4 +25,9 @@
     <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- UI text per language, embedded as langs/tr.json, langs/en.json (see Localization/Loc.cs) -->
+    <EmbeddedResource Include="..\..\langs\*.json" LogicalName="langs/%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

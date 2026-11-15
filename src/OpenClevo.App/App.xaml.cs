@@ -1,5 +1,6 @@
 using System.Windows;
 using Microsoft.Win32;
+using OpenClevo.Localization;
 
 namespace OpenClevo.App;
 
@@ -15,6 +16,7 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        Loc.Init();   // before any window or tray menu is built
         // elevated helper started by the window to switch the NVIDIA GPU (no UI, no single-instance check)
         if (e.Args.FirstOrDefault(a => a.StartsWith("--nvidia=")) is { } nv) { Shutdown(NvidiaPower.ApplyHere(nv.EndsWith("on"))); return; }
         if (e.Args.FirstOrDefault(a => a.StartsWith("--install-helper=")) is { } ih) { Shutdown(NvidiaPower.InstallHelperHere(ih["--install-helper=".Length..])); return; }

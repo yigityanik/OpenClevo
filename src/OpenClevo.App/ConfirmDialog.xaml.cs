@@ -1,3 +1,4 @@
+using OpenClevo.Localization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -12,6 +13,7 @@ public partial class ConfirmDialog : Window
     ConfirmDialog(string title, string body, string[] buttons)
     {
         InitializeComponent();
+        FlowDirection = OpenClevo.Localization.Loc.Flow;
         TitleText.Text = title;
         BodyText.Text = body;
         BodyText.Visibility = string.IsNullOrWhiteSpace(body) ? Visibility.Collapsed : Visibility.Visible;
@@ -47,5 +49,5 @@ public partial class ConfirmDialog : Window
 static class Dialog
 {
     public static int Ask(Window? owner, string title, string body, params string[] buttons) => ConfirmDialog.Show(owner, title, body, buttons);
-    public static void Info(Window? owner, string body, string title = "OpenClevo") => ConfirmDialog.Show(owner, title, body, "Tamam");
+    public static void Info(Window? owner, string body, string title = "OpenClevo") => ConfirmDialog.Show(owner, title, body, Loc.T("common.ok"));
 }
