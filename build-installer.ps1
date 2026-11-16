@@ -7,7 +7,8 @@ $out     = Join-Path $root 'build'
 
 Remove-Item $payload, $zip -Recurse -Force -ErrorAction SilentlyContinue
 # self-contained: the .NET runtime is inside the exe, so nothing has to be installed on the user's PC. One compressed file.
-dotnet publish (Join-Path $root 'src\OpenClevo.App') -c Release -r win-x64 --self-contained true -o $payload --nologo -p:DebugType=None -p:DebugSymbols=false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
+dotnet publish (Join-Path $root 'src\OpenClevo.App') -c Release -r win-x64 --self-contained true -o $payload --nologo -p:DebugType=None -p:DebugSymbols=false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+# (no single-file compression for the app: a compressed bundle is unpacked into private memory at start, +130 MB of RAM; the installer's zip compresses it anyway)
 if ($LASTEXITCODE -ne 0) { throw 'publish failed' }
 
 # Acpi Bridge driver (ACPI\CLV0001): the app talks to it, so the setup installs it. Taken from drivers\AcpiBridge, or

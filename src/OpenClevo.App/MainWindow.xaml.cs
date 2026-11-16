@@ -889,7 +889,7 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(CancelEventArgs e)
     {
-        if (CloseToTray) { e.Cancel = true; Hide(); ((App)Application.Current).HintTray(); }
+        if (CloseToTray) { e.Cancel = true; Hide(); ((App)Application.Current).HintTray(); App.TrimMemory(); }
         else Application.Current.Shutdown();
         base.OnClosing(e);
     }

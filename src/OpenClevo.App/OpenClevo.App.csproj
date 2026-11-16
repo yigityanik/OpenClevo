@@ -28,6 +28,9 @@
   <PropertyGroup>
     <!-- the framework's own translated strings are not needed (the app has its own languages): keeps the self-contained build smaller -->
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- a tray utility: no background GC thread / heap, no profile-guided tiering overhead -->
+    <ConcurrentGarbageCollection>false</ConcurrentGarbageCollection>
+    <TieredPGO>false</TieredPGO>
   </PropertyGroup>
 
   <ItemGroup>

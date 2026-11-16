@@ -20,6 +20,9 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        // CPU rendering: the GPU path keeps ~80 MB of video-memory mirrors and shader state for a window this small
+        // ("OPENCLEVO_HWRENDER=1" switches the GPU path back on, in case animations feel better there)
+        if (Environment.GetEnvironmentVariable("OPENCLEVO_HWRENDER") != "1") System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
         Loc.Init();   // before any window or tray menu is built
         // removal (Apps & features runs "--uninstall"): an elevated copy of this exe shows the removal window
         if (e.Args.Contains("--uninstall")) { Shutdown(Uninstaller.Elevate()); return; }
@@ -65,6 +68,7 @@ public partial class App : Application
             _kb.Start(saved, [k.Left, k.Middle, k.Right]);
         }
         if (!e.Args.Contains("--tray")) ShowWindow();
+        else TrimMemory();   // starts hidden in the tray: keep the footprint small from the first minute
     }
 
     /// <summary>Swaps merged dictionary 0 between Themes/Dark.xaml and Themes/Light.xaml; everything binds with DynamicResource.</summary>
@@ -128,6 +132,35 @@ public partial class App : Application
                 Dispatcher.BeginInvoke(ShowWindow);
         }) { IsBackground = true, Name = "OpenClevo show listener" };
         listener.Start();
+    }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")] static extern bool SetProcessWorkingSetSize(IntPtr process, nint min, nint max);
+
+    DispatcherTimer? _trimTimer;
+
+    /// <summary>
+    /// While the window sits hidden in the tray, give memory back: collect garbage and drop the working set now (after the
+    /// window hides) and again every half minute. Windows pages back what is still needed when the window opens.
+    /// </summary>
+    public static void TrimMemory()
+    {
+        var app = (App)Current;
+        var t = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(1.5) };
+        t.Tick += (_, _) => { t.Stop(); app.TrimNow(); };
+        t.Start();
+        if (app._trimTimer == null)
+        {
+            app._trimTimer = new DispatcherTimer(DispatcherPriority.Background) { Interval = TimeSpan.FromSeconds(30) };
+            app._trimTimer.Tick += (_, _) => app.TrimNow();
+            app._trimTimer.Start();
+        }
+    }
+
+    void TrimNow()
+    {
+        if (_window is { IsVisible: true }) return;
+        GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+        SetProcessWorkingSetSize(System.Diagnostics.Process.GetCurrentProcess().Handle, -1, -1);
     }
 
     Core.FnEvents? _fn;
