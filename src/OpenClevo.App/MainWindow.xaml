@@ -39,8 +39,24 @@
                               Data="M3,7 L21,7 M3,17 L21,17 M6.5,7 A2.5,2.5 0 1 0 11.5,7 A2.5,2.5 0 1 0 6.5,7 M12.5,17 A2.5,2.5 0 1 0 17.5,17 A2.5,2.5 0 1 0 12.5,17"/>
                     </RadioButton>
                 </StackPanel>
+                <!-- theme: one sun/moon glyph, the same size as the gear, no frame; the two glyphs turn into each other -->
+                <Button x:Name="ThemeBtn" Grid.Row="2" Width="44" Height="44" Margin="0,0,0,56" VerticalAlignment="Bottom" ToolTip="Tema" WindowChrome.IsHitTestVisibleInChrome="True" Click="ThemeBtn_Click" Background="Transparent" BorderThickness="0" Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </ControlTemplate>
+                    </Button.Template>
+                    <Grid Width="20" Height="20">
+                        <TextBlock x:Name="SunIcon" Text="&#xE706;" FontFamily="{StaticResource Icons}" FontSize="17" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                            <TextBlock.RenderTransform><TransformGroup><RotateTransform x:Name="SunRot"/><ScaleTransform x:Name="SunScale"/></TransformGroup></TextBlock.RenderTransform>
+                        </TextBlock>
+                        <TextBlock x:Name="MoonIcon" Text="&#xE708;" FontFamily="{StaticResource Icons}" FontSize="17" Foreground="{DynamicResource Muted}" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                            <TextBlock.RenderTransform><TransformGroup><RotateTransform x:Name="MoonRot"/><ScaleTransform x:Name="MoonScale"/></TransformGroup></TextBlock.RenderTransform>
+                        </TextBlock>
+                    </Grid>
+                </Button>
                 <!-- settings open in their own window -->
-                <Button x:Name="SettingsBtn" Grid.Row="2" Width="44" Height="44" Margin="0,0,0,12" ToolTip="{loc:T settings.title}" WindowChrome.IsHitTestVisibleInChrome="True" Click="SettingsBtn_Click">
+                <Button x:Name="SettingsBtn" Grid.Row="2" Width="44" Height="44" Margin="0,0,0,12" VerticalAlignment="Bottom" ToolTip="{loc:T settings.title}" WindowChrome.IsHitTestVisibleInChrome="True" Click="SettingsBtn_Click">
                     <Button.Template>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="b" Background="Transparent" CornerRadius="6">

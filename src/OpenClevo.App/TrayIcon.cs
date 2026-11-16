@@ -41,6 +41,9 @@ sealed class TrayIcon : IDisposable
         Update();
     }
 
+    /// <summary>A balloon from the tray icon, e.g. after the window was closed to the tray.</summary>
+    public void ShowHint(string text) => _icon.ShowBalloonTip(4000, "OpenClevo", text, ToolTipIcon.Info);
+
     void Safe(Action a)
     {
         try { a(); }

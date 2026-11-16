@@ -150,5 +150,6 @@
   "setup.uninst_tasks": "Suppression des tâches…",
   "setup.uninst_shortcuts": "Suppression des raccourcis et de l'entrée de démarrage…",
   "setup.uninst_registry": "Nettoyage du registre…",
-  "setup.uninst_files": "Suppression des fichiers…"
+  "setup.uninst_files": "Suppression des fichiers…",
+  "tray.running": "OpenClevo continue de fonctionner dans la zone de notification"
 }

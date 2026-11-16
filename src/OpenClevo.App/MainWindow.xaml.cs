@@ -3,6 +3,8 @@ using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
+using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using OpenClevo.Core;
 
@@ -41,6 +43,7 @@ public partial class MainWindow : Window
         InitializeComponent();
         FlowDirection = OpenClevo.Localization.Loc.Flow;   // Arabic mirrors the window
         _hw = hw;
+        UpdateThemeIcon(App.IsLightTheme, animate: false);
         _kb = kb;
         FitToScreen();
         CpuName.Text = HardwareNames.Cpu();
@@ -144,7 +147,8 @@ public partial class MainWindow : Window
         int shownTemp = idx == 2 && NvidiaPower.IsOn == false ? 0 : f.TemperatureC;
         temp.Text = $"{shownTemp}°";
         // the number is neutral until it gets warm: color means "look at this"
-        temp.Foreground = (Brush)FindResource(shownTemp >= 90 ? "Hot" : shownTemp >= 78 ? "Warn" : "Text");
+        // bound to the theme resource, so the colour follows a theme change at once (not on the next sensor tick)
+        temp.SetResourceReference(TextBlock.ForegroundProperty, shownTemp >= 90 ? "Hot" : shownTemp >= 78 ? "Warn" : "Text");
         rpm.Text = $"{f.Rpm:N0} rpm";
         duty.Text = $"fan %{f.DutyPercent}";
         curve.LiveTemperature = f.TemperatureC;
@@ -657,6 +661,65 @@ public partial class MainWindow : Window
 
     void SettingsBtn_Click(object s, RoutedEventArgs e) => new SettingsWindow { Owner = this }.ShowDialog();
 
+    // ---- theme toggle: the sun shows in the light theme, the moon in the dark one ----
+    void ThemeBtn_Click(object s, RoutedEventArgs e)
+    {
+        bool toLight = !App.IsLightTheme;
+        CrossfadeTheme(() => App.SetTheme(toLight));
+        UpdateThemeIcon(toLight, animate: true);
+    }
+
+    /// <summary>
+    /// Changes the theme without a hard cut: a snapshot of the window in its old colours is laid over it, the new theme is
+    /// applied underneath at once, and the snapshot fades away. Works for every colour, however it is drawn.
+    /// </summary>
+    void CrossfadeTheme(Action applyTheme)
+    {
+        double w = Root.ActualWidth, h = Root.ActualHeight;
+        if (w < 1 || h < 1) { applyTheme(); return; }
+        var dpi = VisualTreeHelper.GetDpi(Root);
+        var snap = new RenderTargetBitmap((int)Math.Ceiling(w * dpi.DpiScaleX), (int)Math.Ceiling(h * dpi.DpiScaleY),
+            96 * dpi.DpiScaleX, 96 * dpi.DpiScaleY, PixelFormats.Pbgra32);
+        var background = new DrawingVisual();   // the window's own background is not part of Root
+        using (var dc = background.RenderOpen()) dc.DrawRectangle((Brush)FindResource("Bg"), null, new Rect(0, 0, w, h));
+        snap.Render(background);
+        snap.Render(Root);
+
+        var overlay = new System.Windows.Controls.Image { Source = snap, Stretch = Stretch.Fill, IsHitTestVisible = false };
+        Grid.SetColumnSpan(overlay, 2);
+        Panel.SetZIndex(overlay, 1000);
+        Root.Children.Add(overlay);
+
+        applyTheme();   // the new colours appear underneath, behind the snapshot
+
+        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(500)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut } };
+        fade.Completed += (_, _) => Root.Children.Remove(overlay);
+        overlay.BeginAnimation(OpacityProperty, fade);
+    }
+
+    /// <summary>Shows the glyph for the current theme; the other one turns away and the new one turns in.</summary>
+    void UpdateThemeIcon(bool light, bool animate)
+    {
+        Turn(SunIcon, SunRot, SunScale, light, +90, animate);
+        Turn(MoonIcon, MoonRot, MoonScale, !light, -90, animate);
+    }
+
+    static void Turn(TextBlock tb, RotateTransform rot, ScaleTransform scale, bool shown, double hiddenAngle, bool animate)
+    {
+        double angle = shown ? 0 : hiddenAngle, size = shown ? 1 : 0.4, opacity = shown ? 1 : 0;
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var d = TimeSpan.FromMilliseconds(450);
+        if (!animate)
+        {
+            rot.Angle = angle; scale.ScaleX = scale.ScaleY = size; tb.Opacity = opacity;
+            return;
+        }
+        rot.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(angle, d) { EasingFunction = ease });
+        scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(size, d) { EasingFunction = ease });
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(size, d) { EasingFunction = ease });
+        tb.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(opacity, d) { EasingFunction = ease });
+    }
+
     // Fixed-size window: never allow maximize (e.g. via Win+Up or caption double-click).
     protected override void OnStateChanged(EventArgs e)
     {
@@ -675,7 +738,7 @@ public partial class MainWindow : Window
 
     protected override void OnClosing(CancelEventArgs e)
     {
-        if (CloseToTray) { e.Cancel = true; Hide(); }
+        if (CloseToTray) { e.Cancel = true; Hide(); ((App)Application.Current).HintTray(); }
         else Application.Current.Shutdown();
         base.OnClosing(e);
     }

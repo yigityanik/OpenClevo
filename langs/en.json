@@ -150,5 +150,6 @@
   "setup.uninst_tasks": "Removing tasks…",
   "setup.uninst_shortcuts": "Removing shortcuts and the startup entry…",
   "setup.uninst_registry": "Cleaning up the registry…",
-  "setup.uninst_files": "Removing files…"
+  "setup.uninst_files": "Removing files…",
+  "tray.running": "OpenClevo keeps running in the system tray"
 }

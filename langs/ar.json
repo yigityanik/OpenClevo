@@ -150,5 +150,6 @@
   "setup.uninst_tasks": "جارٍ حذف المهام…",
   "setup.uninst_shortcuts": "جارٍ حذف الاختصارات وإدخال بدء التشغيل…",
   "setup.uninst_registry": "جارٍ تنظيف السجل…",
-  "setup.uninst_files": "جارٍ حذف الملفات…"
+  "setup.uninst_files": "جارٍ حذف الملفات…",
+  "tray.running": "يواصل OpenClevo العمل في درج النظام"
 }

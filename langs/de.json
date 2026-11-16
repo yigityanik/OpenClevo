@@ -150,5 +150,6 @@
   "setup.uninst_tasks": "Aufgaben werden entfernt…",
   "setup.uninst_shortcuts": "Verknüpfungen und Autostart-Eintrag werden entfernt…",
   "setup.uninst_registry": "Registrierung wird bereinigt…",
-  "setup.uninst_files": "Dateien werden entfernt…"
+  "setup.uninst_files": "Dateien werden entfernt…",
+  "tray.running": "OpenClevo läuft im Infobereich weiter"
 }

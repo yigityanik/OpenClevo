@@ -1,22 +1,22 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-    <!-- Light: Apple grouped-list look — #F5F5F7 window, white groups, hairlines at 8 % black. Same keys as Dark.xaml. -->
-    <Color x:Key="BgColor">#F5F5F7</Color>
-    <Color x:Key="CardColor">#FFFFFF</Color>
-    <Color x:Key="CardHiColor">#F0F0F3</Color>
-    <Color x:Key="LineColor">#14000000</Color>
-    <Color x:Key="TextColor">#1D1D1F</Color>
-    <Color x:Key="MutedColor">#6E6E73</Color>
-    <Color x:Key="FaintColor">#AEAEB2</Color>
-    <Color x:Key="CpuColor">#007AFF</Color>
-    <Color x:Key="AccentColor">#007AFF</Color>
-    <Color x:Key="GpuColor">#34C759</Color>
-    <Color x:Key="WarnColor">#FF9500</Color>
-    <Color x:Key="HotColor">#FF3B30</Color>
-    <Color x:Key="SegBgColor">#E8E8ED</Color>
-    <Color x:Key="SegThumbColor">#FFFFFF</Color>
-    <Color x:Key="TrackOffColor">#D1D1D6</Color>
-    <Color x:Key="HoverColor">#E6E6EB</Color>
+    <!-- Light: soft blue-grey, a further step down from the last draft so it is less bright. Same keys as Dark.xaml. -->
+    <Color x:Key="BgColor">#D9DFE7</Color>
+    <Color x:Key="CardColor">#E6EBF1</Color>
+    <Color x:Key="CardHiColor">#DCE2EA</Color>
+    <Color x:Key="LineColor">#BFC9D6</Color>
+    <Color x:Key="TextColor">#1E2430</Color>
+    <Color x:Key="MutedColor">#56606F</Color>
+    <Color x:Key="FaintColor">#8790A0</Color>
+    <Color x:Key="CpuColor">#2A64B8</Color>
+    <Color x:Key="AccentColor">#2A64B8</Color>
+    <Color x:Key="GpuColor">#2A8A46</Color>
+    <Color x:Key="WarnColor">#C8741F</Color>
+    <Color x:Key="HotColor">#C93C3C</Color>
+    <Color x:Key="SegBgColor">#CCD4DE</Color>
+    <Color x:Key="SegThumbColor">#EEF2F6</Color>
+    <Color x:Key="TrackOffColor">#B5BFCC</Color>
+    <Color x:Key="HoverColor">#C9D2DD</Color>
 
     <SolidColorBrush x:Key="Bg" Color="{StaticResource BgColor}"/>
     <SolidColorBrush x:Key="Card" Color="{StaticResource CardColor}"/>

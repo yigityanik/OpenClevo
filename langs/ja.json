@@ -150,5 +150,6 @@
   "setup.uninst_tasks": "タスクを削除しています…",
   "setup.uninst_shortcuts": "ショートカットとスタートアップ項目を削除しています…",
   "setup.uninst_registry": "レジストリをクリーンアップしています…",
-  "setup.uninst_files": "ファイルを削除しています…"
+  "setup.uninst_files": "ファイルを削除しています…",
+  "tray.running": "OpenClevo はシステムトレイで実行を続けています"
 }
