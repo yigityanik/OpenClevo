@@ -75,6 +75,8 @@ static class NvidiaPower
     static string HelperDir => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "OpenClevo");
     static string ExeName => Path.GetFileName(Environment.ProcessPath!);
     static string DllName => Path.ChangeExtension(ExeName, ".dll");
+    /// <summary>The file that tells whether the installed copy is current: the dll, or the exe itself in the single-file build (no dll beside it).</summary>
+    static string VersionFile => File.Exists(Path.Combine(AppContext.BaseDirectory, DllName)) ? DllName : ExeName;
 
     static int Run(string file, string args, int timeoutMs = 15000)
     {
@@ -91,8 +93,8 @@ static class NvidiaPower
         {
             try
             {
-                var installed = new FileInfo(Path.Combine(HelperDir, DllName));
-                var mine = new FileInfo(Path.Combine(AppContext.BaseDirectory, DllName));
+                var installed = new FileInfo(Path.Combine(HelperDir, VersionFile));
+                var mine = new FileInfo(Path.Combine(AppContext.BaseDirectory, VersionFile));
                 if (!installed.Exists || !mine.Exists) return false;
                 if (installed.Length != mine.Length || installed.LastWriteTimeUtc != mine.LastWriteTimeUtc) return false;
                 return TaskExists(TaskOff) && TaskExists(TaskOn);

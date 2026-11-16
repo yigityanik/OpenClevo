@@ -1,15 +1,16 @@
-using OpenClevo.Localization;
 using System.Windows;
 using System.Windows.Input;
+using OpenClevo.Localization;
 
-namespace OpenClevo.Setup;
+namespace OpenClevo.App;
 
+/// <summary>Removal window of the installed app (<c>OpenClevo.exe --uninstall</c>): confirm, progress, done.</summary>
 public partial class UninstallWindow : Window
 {
     public UninstallWindow()
     {
         InitializeComponent();
-        FlowDirection = OpenClevo.Localization.Loc.Flow;
+        FlowDirection = Loc.Flow;
     }
 
     async void Remove_Click(object s, RoutedEventArgs e)
@@ -23,7 +24,7 @@ public partial class UninstallWindow : Window
         string? error = null;
         try
         {
-            await Task.Run(() => Installer.Uninstall(settings, (text, frac) =>
+            await Task.Run(() => Uninstaller.Run(settings, (text, frac) =>
                 Dispatcher.BeginInvoke(() =>
                 {
                     StepText.Text = text;

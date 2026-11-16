@@ -10,9 +10,10 @@ using Microsoft.Win32;
 namespace OpenClevo.Setup;
 
 /// <summary>
-/// What the setup does, in order: stop a running copy, unpack the app into Program Files, register the NVIDIA helper
-/// tasks (the app's own <c>--install-helper</c> mode, so the task definitions live in one place), then the optional
-/// startup entry, tray setting, shortcuts and launch.
+/// What the setup does, in order: stop a running copy, unpack the app into Program Files, install the Acpi Bridge driver,
+/// register the NVIDIA helper tasks (the app's own <c>--install-helper</c> mode, so the task definitions live in one place),
+/// then the optional startup entry, tray setting, shortcuts and launch. Removal is done by the installed app
+/// (<c>OpenClevo.exe --uninstall</c>, see the app's Uninstaller), so there is no second copy of the .NET runtime on disk.
 /// </summary>
 static class Installer
 {
@@ -49,17 +50,10 @@ static class Installer
             }
         }
 
-        // this program doubles as the uninstaller (started with --uninstall from Apps & features)
-        // the uninstaller is this program under another name: it needs its own dll and config next to it
-        var self = Environment.ProcessPath!;
-        var selfDir = Path.GetDirectoryName(self)!;
-        var selfName = Path.GetFileNameWithoutExtension(self);
-        File.Copy(self, UninstallerPath, overwrite: true);
-        foreach (var ext in new[] { ".dll", ".runtimeconfig.json", ".deps.json" })
-        {
-            var from = Path.Combine(selfDir, selfName + ext);
-            if (File.Exists(from)) File.Copy(from, Path.Combine(TargetDir, selfName + ext), overwrite: true);
-        }
+        // files of earlier installs: the app is one self-contained exe now and removes itself (no Uninstall.exe copy)
+        foreach (var f in new[] { "Uninstall.exe", "OpenClevo.dll", "OpenClevo.deps.json", "OpenClevo.runtimeconfig.json", "OpenClevo.Core.dll", "NAudio.Core.dll", "NAudio.Wasapi.dll" })
+            TryDelete(Path.Combine(TargetDir, f));
+        foreach (var f in Directory.GetFiles(TargetDir, "OpenClevo-Setup.*")) TryDelete(f);
 
         progress(Loc.T("setup.progress_driver"), 0.67);
         InstallDriver();
@@ -110,7 +104,6 @@ static class Installer
         catch (Exception ex) { Log("driver install failed: " + ex.Message); }
     }
 
-    public static string UninstallerPath =>Path.Combine(TargetDir, "Uninstall.exe");
     static string StartMenuShortcut => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms), "OpenClevo.lnk");
     static string DesktopShortcut => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "OpenClevo.lnk");
     const string UninstallKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\OpenClevo";
@@ -123,68 +116,14 @@ static class Installer
         k.SetValue("Publisher", "Yiğit Emre Yanık");
         k.SetValue("InstallLocation", TargetDir);
         k.SetValue("DisplayIcon", TargetExe + ",0");
-        k.SetValue("UninstallString", $"\"{UninstallerPath}\" --uninstall");
+        k.SetValue("UninstallString", $"\"{TargetExe}\" --uninstall");
         k.SetValue("NoModify", 1, RegistryValueKind.DWord);
         k.SetValue("NoRepair", 1, RegistryValueKind.DWord);
     }
 
-    /// <summary>
-    /// Removes everything the setup added: stops the app, turns the NVIDIA GPU back on if it is off, deletes the helper
-    /// tasks, startup entry, shortcuts and the Apps &amp; features entry, optionally the settings, then the folder itself
-    /// (after this program has exited: a detached cmd waits and deletes it).
-    /// </summary>
-    public static void Uninstall(bool removeSettings, Action<string, double> progress)
-    {
-        progress(Loc.T("setup.uninst_stop"), 0.05);
-        foreach (var p in Process.GetProcessesByName("OpenClevo").Where(p => p.Id != Environment.ProcessId))
-        {
-            try { p.Kill(true); p.WaitForExit(5000); } catch { }
-        }
-
-        progress(Loc.T("setup.uninst_gpu"), 0.25);
-        Schtasks("/run /tn OpenClevoNvidiaOn");   // no-op when the GPU is already on
-        Thread.Sleep(3000);
-
-        progress(Loc.T("setup.uninst_tasks"), 0.45);
-        Schtasks("/delete /tn OpenClevoNvidiaOff /f");
-        Schtasks("/delete /tn OpenClevoNvidiaOn /f");
-
-        progress(Loc.T("setup.uninst_shortcuts"), 0.6);
-        using (var run = Registry.CurrentUser.OpenSubKey(RunKey, writable: true))
-        {
-            Log("startup key opened: " + (run != null));
-            if (run?.GetValue("OpenClevo") != null) { run.DeleteValue("OpenClevo"); Log("startup value removed"); }
-            else Log("startup value not present");
-        }
-        TryDelete(StartMenuShortcut);
-        TryDelete(DesktopShortcut);
-
-        progress(Loc.T("setup.uninst_registry"), 0.75);
-        Registry.LocalMachine.DeleteSubKeyTree(UninstallKey, throwOnMissingSubKey: false);
-        if (removeSettings) Registry.CurrentUser.DeleteSubKeyTree(AppKey, throwOnMissingSubKey: false);
-
-        progress(Loc.T("setup.uninst_files"), 0.9);
-        // cmd outlives this process, waits a moment (this program is still running), then removes the folder
-        var bat = Path.Combine(Path.GetTempPath(), "openclevo-cleanup.cmd");
-        File.WriteAllText(bat, "@echo off\r\nset /a n=0\r\n:loop\r\nrmdir /s /q \"" + TargetDir + "\" 2>nul\r\nif not exist \"" + TargetDir + "\" goto done\r\nset /a n+=1\r\nif %n% gtr 90 goto done\r\nping -n 2 127.0.0.1 >nul\r\ngoto loop\r\n:done\r\ndel \"%~f0\"\r\n");
-        Process.Start(new ProcessStartInfo("cmd.exe", "/c \"" + bat + "\"") { UseShellExecute = false, CreateNoWindow = true });
-        Log("cleanup started for " + TargetDir);
-        progress(Loc.T("setup.uninstalled"), 1.0);
-    }
-
     static void Log(string line)
     {
-        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "OpenClevo-uninstall.log"), DateTime.Now.ToString("HH:mm:ss") + "  " + line + Environment.NewLine); }
-        catch { }
-    }
-
-    static void Schtasks(string args)
-    {
-        try
-        {
-            using var p = Process.Start(new ProcessStartInfo("schtasks.exe", args) { UseShellExecute = false, CreateNoWindow = true });
-            p?.WaitForExit(20000);
-        }
+        try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "OpenClevo-setup.log"), DateTime.Now.ToString("HH:mm:ss") + "  " + line + Environment.NewLine); }
         catch { }
     }
 

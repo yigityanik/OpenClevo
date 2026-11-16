@@ -1,10 +1,18 @@
-<Window xmlns:loc="clr-namespace:OpenClevo.Localization" x:Class="OpenClevo.Setup.UninstallWindow"
+<Window xmlns:loc="clr-namespace:OpenClevo.Localization" x:Class="OpenClevo.App.UninstallWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="{loc:T setup.uninstall_title}" Width="520" Height="340" ResizeMode="NoResize"
         WindowStyle="None" AllowsTransparency="True" Background="Transparent"
         WindowStartupLocation="CenterScreen" UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Ideal" TextOptions.TextRenderingMode="ClearType">
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- the same look as the setup window (file shared with the setup project) -->
+                <ResourceDictionary Source="pack://application:,,,/SetupTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
     <Border Margin="10" Background="{StaticResource Card}" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="8" MouseLeftButtonDown="Drag">
         <Border.Effect><DropShadowEffect BlurRadius="24" ShadowDepth="4" Opacity="0.4" Color="Black"/></Border.Effect>
         <Grid>

@@ -25,6 +25,16 @@
     <Using Remove="System.Drawing" />
   </ItemGroup>
 
+  <PropertyGroup>
+    <!-- the framework's own translated strings are not needed (the app has its own languages): keeps the self-contained build smaller -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- look of the uninstall window, shared with the setup project -->
+    <Page Include="..\Shared\SetupTheme.xaml" Link="SetupTheme.xaml" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\OpenClevo.Core\OpenClevo.Core.csproj" />
   </ItemGroup>

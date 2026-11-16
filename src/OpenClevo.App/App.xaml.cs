@@ -21,11 +21,16 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         Loc.Init();   // before any window or tray menu is built
+        // removal (Apps & features runs "--uninstall"): an elevated copy of this exe shows the removal window
+        if (e.Args.Contains("--uninstall")) { Shutdown(Uninstaller.Elevate()); return; }
+        if (e.Args.Contains("--uninstall-elevated")) { ShowUninstall(e); return; }
         // elevated helper started by the window to switch the NVIDIA GPU (no UI, no single-instance check)
         if (e.Args.FirstOrDefault(a => a.StartsWith("--nvidia=")) is { } nv) { Shutdown(NvidiaPower.ApplyHere(nv.EndsWith("on"))); return; }
         if (e.Args.FirstOrDefault(a => a.StartsWith("--install-helper=")) is { } ih) { Shutdown(NvidiaPower.InstallHelperHere(ih["--install-helper=".Length..])); return; }
 
-        _mutex = new Mutex(true, @"Local\OpenClevo.App", out bool first);
+        // "--instance=name" runs a second, independent copy (for testing next to the installed one)
+        _instance = e.Args.FirstOrDefault(a => a.StartsWith("--instance="))?["--instance=".Length..] ?? "";
+        _mutex = new Mutex(true, @"Local\OpenClevo.App" + _instance, out bool first);
         if (!first)
         {
             // another copy is already running (maybe in the tray): ask it to show its window, then leave
@@ -98,7 +103,17 @@ public partial class App : Application
         catch { return false; }
     }
 
-    const string ShowEventName = @"Local\OpenClevo.Show";
+    string _instance = "";
+    string ShowEventName => @"Local\OpenClevo.Show" + _instance;
+
+    void ShowUninstall(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+        var w = new UninstallWindow();
+        MainWindow = w;
+        w.Closed += (_, _) => Shutdown();   // the app is set to shut down only explicitly
+        w.Show();
+    }
 
     /// <summary>Waits for a second copy to ask for the window (the shortcut while the app sits in the tray).</summary>
     void StartShowListener()
