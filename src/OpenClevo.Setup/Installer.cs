@@ -40,8 +40,9 @@ static class Installer
             int n = 0, total = zip.Entries.Count;
             foreach (var entry in zip.Entries)
             {
-                if (string.IsNullOrEmpty(entry.Name)) continue;   // directory entry
-                var dest = Path.Combine(TargetDir, entry.FullName);
+                var name = entry.FullName.Replace('\\', '/');     // Windows PowerShell's Compress-Archive may write backslashes
+                if (name.EndsWith('/')) continue;                 // directory entry
+                var dest = Path.Combine(TargetDir, name);
                 Directory.CreateDirectory(Path.GetDirectoryName(dest)!);
                 entry.ExtractToFile(dest, overwrite: true);
                 progress(Loc.T("setup.progress_copy"), 0.15 + 0.5 * ++n / total);
@@ -59,6 +60,9 @@ static class Installer
             var from = Path.Combine(selfDir, selfName + ext);
             if (File.Exists(from)) File.Copy(from, Path.Combine(TargetDir, selfName + ext), overwrite: true);
         }
+
+        progress(Loc.T("setup.progress_driver"), 0.67);
+        InstallDriver();
 
         progress(Loc.T("setup.progress_tasks"), 0.7);
         var sid = WindowsIdentity.GetCurrent().User?.Value ?? throw new InvalidOperationException(Loc.T("setup.err_sid"));
@@ -87,7 +91,26 @@ static class Installer
         progress(Loc.T("common.ok"), 1.0);
     }
 
-    public static string UninstallerPath => Path.Combine(TargetDir, "Uninstall.exe");
+    /// <summary>
+    /// Installs the bundled Acpi Bridge driver (ACPI\CLV0001, signed by Microsoft's hardware program) so the app works
+    /// without Clevo Control Center. Windows keeps the newer of two versions, so an existing install is left alone.
+    /// A failure is logged but does not stop the setup: the app shows "driver not reachable" if it really is missing.
+    /// The driver stays installed on uninstall, since other Clevo software may use it.
+    /// </summary>
+    static void InstallDriver()
+    {
+        var inf = Path.Combine(TargetDir, "Drivers", "AcpiBridge", "AcpiBridge.inf");
+        if (!File.Exists(inf)) { Log("driver package not in payload, skipped"); return; }
+        try
+        {
+            using var p = Process.Start(new ProcessStartInfo("pnputil.exe", $"/add-driver \"{inf}\" /install") { UseShellExecute = false, CreateNoWindow = true });
+            if (p == null || !p.WaitForExit(120000)) { Log("pnputil did not finish"); return; }
+            Log("pnputil exit code " + p.ExitCode + (p.ExitCode is 0 or 3010 ? " (ok)" : " (failed)"));
+        }
+        catch (Exception ex) { Log("driver install failed: " + ex.Message); }
+    }
+
+    public static string UninstallerPath =>Path.Combine(TargetDir, "Uninstall.exe");
     static string StartMenuShortcut => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms), "OpenClevo.lnk");
     static string DesktopShortcut => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "OpenClevo.lnk");
     const string UninstallKey = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\OpenClevo";

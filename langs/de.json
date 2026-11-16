@@ -133,6 +133,7 @@
   "setup.progress_stop": "Laufende Kopie wird beendet…",
   "setup.progress_copy": "Dateien werden kopiert…",
   "setup.progress_tasks": "NVIDIA-Aufgaben werden registriert…",
+  "setup.progress_driver": "Treiber wird installiert…",
   "setup.progress_settings": "Einstellungen werden geschrieben…",
   "setup.progress_shortcuts": "Verknüpfungen werden erstellt…",
   "setup.progress_register": "Wird zur Liste der installierten Apps hinzugefügt…",

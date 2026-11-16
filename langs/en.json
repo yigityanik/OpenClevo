@@ -133,6 +133,7 @@
   "setup.progress_stop": "Closing the running copy…",
   "setup.progress_copy": "Copying files…",
   "setup.progress_tasks": "Registering the NVIDIA tasks…",
+  "setup.progress_driver": "Installing the driver…",
   "setup.progress_settings": "Writing settings…",
   "setup.progress_shortcuts": "Creating shortcuts…",
   "setup.progress_register": "Adding to the installed apps list…",

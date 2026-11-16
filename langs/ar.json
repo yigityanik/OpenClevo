@@ -133,6 +133,7 @@
   "setup.progress_stop": "جارٍ إغلاق النسخة قيد التشغيل…",
   "setup.progress_copy": "جارٍ نسخ الملفات…",
   "setup.progress_tasks": "جارٍ تسجيل مهام NVIDIA…",
+  "setup.progress_driver": "جارٍ تثبيت البرنامج التشغيلي…",
   "setup.progress_settings": "جارٍ كتابة الإعدادات…",
   "setup.progress_shortcuts": "جارٍ إنشاء الاختصارات…",
   "setup.progress_register": "جارٍ الإضافة إلى قائمة التطبيقات المثبتة…",

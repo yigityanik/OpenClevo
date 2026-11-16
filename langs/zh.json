@@ -133,6 +133,7 @@
   "setup.progress_stop": "正在关闭正在运行的副本…",
   "setup.progress_copy": "正在复制文件…",
   "setup.progress_tasks": "正在注册 NVIDIA 任务…",
+  "setup.progress_driver": "正在安装驱动程序…",
   "setup.progress_settings": "正在写入设置…",
   "setup.progress_shortcuts": "正在创建快捷方式…",
   "setup.progress_register": "正在添加到已安装应用列表…",

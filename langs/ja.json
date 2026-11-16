@@ -133,6 +133,7 @@
   "setup.progress_stop": "実行中のコピーを終了しています…",
   "setup.progress_copy": "ファイルをコピーしています…",
   "setup.progress_tasks": "NVIDIA タスクを登録しています…",
+  "setup.progress_driver": "ドライバーをインストールしています…",
   "setup.progress_settings": "設定を書き込んでいます…",
   "setup.progress_shortcuts": "ショートカットを作成しています…",
   "setup.progress_register": "インストール済みアプリに追加しています…",

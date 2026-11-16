@@ -133,6 +133,7 @@
   "setup.progress_stop": "Çalışan kopya kapatılıyor…",
   "setup.progress_copy": "Dosyalar kopyalanıyor…",
   "setup.progress_tasks": "NVIDIA görevleri kaydediliyor…",
+  "setup.progress_driver": "Sürücü yükleniyor…",
   "setup.progress_settings": "Ayarlar yazılıyor…",
   "setup.progress_shortcuts": "Kısayollar oluşturuluyor…",
   "setup.progress_register": "Uygulamalar listesine ekleniyor…",
