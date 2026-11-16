@@ -243,16 +243,75 @@ public partial class MainWindow : Window
         RefreshSystemSwitches();
     }
 
+    // Windows 11 app-open motion: the new page grows slightly from its centre and fades in, the old one fades out quickly
+    const double EntranceScale = 0.97;  // size the new page starts from
+    const int EntranceMs = 350;         // grow + fade-in
+    const int ExitMs = 120;             // old page fade-out
+    const int EntranceDelayMs = 60;     // short pause so the exit reads first
+    FrameworkElement _activePanel;
+
+    bool _suppressTab;                 // setting IsChecked fires Checked, which must not re-enter ShowPage
+    FrameworkElement _lastPage;        // the tab page to return to after the settings page
+
     void Tab_Click(object s, RoutedEventArgs e)
     {
-        if (!IsInitialized) return;   // Checked fires for the default tab while XAML is loading
+        if (!IsInitialized || _suppressTab) return;   // Checked fires for the default tab while XAML is loading
         var shown = TabFans.IsChecked == true ? FanPanel : TabKb.IsChecked == true ? KbPanel : TabSys.IsChecked == true ? SysPanel : BatPanel;
-        shown.BeginAnimation(OpacityProperty, new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(160)));
-        FanPanel.Visibility = TabFans.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-        KbPanel.Visibility = TabKb.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-        BatPanel.Visibility = TabBat.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-        SysPanel.Visibility = TabSys.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-        SettingsPanel.Visibility = Visibility.Collapsed;   // a tab takes the place of the settings page
+        ShowPage(shown);
+    }
+
+    /// <summary>One place for every page change: the old page leaves, the new one comes in with the same motion.</summary>
+    void ShowPage(FrameworkElement target)
+    {
+        _suppressTab = true;
+        TabFans.IsChecked = target == FanPanel;
+        TabKb.IsChecked = target == KbPanel;
+        TabBat.IsChecked = target == BatPanel;
+        TabSys.IsChecked = target == SysPanel;
+        _suppressTab = false;
+
+        _activePanel = target;
+        foreach (var p in new FrameworkElement[] { FanPanel, KbPanel, BatPanel, SysPanel, SettingsPanel })
+            if (p != target && p.Visibility == Visibility.Visible) Exit(p);
+        if (target != SettingsPanel) _lastPage = target;
+        Reset(target);
+        target.Visibility = Visibility.Visible;
+        Entrance(target);
+    }
+
+    static void Reset(FrameworkElement p)
+    {
+        p.BeginAnimation(UIElement.OpacityProperty, null);
+        p.Opacity = 1;
+        p.RenderTransform = Transform.Identity;
+    }
+
+    // decelerating curve, the same feel as the Windows 11 entrance motion
+    static CubicEase Decelerate() => new() { EasingMode = EasingMode.EaseOut };
+
+    void Entrance(FrameworkElement p)
+    {
+        p.RenderTransformOrigin = new Point(0.5, 0.5);
+        var sc = new ScaleTransform(EntranceScale, EntranceScale);
+        p.RenderTransform = sc;
+        p.Opacity = 0;
+        var span = TimeSpan.FromMilliseconds(EntranceMs);
+        var begin = TimeSpan.FromMilliseconds(EntranceDelayMs);
+        sc.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(EntranceScale, 1, span) { BeginTime = begin, EasingFunction = Decelerate() });
+        sc.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(EntranceScale, 1, span) { BeginTime = begin, EasingFunction = Decelerate() });
+        p.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, span) { BeginTime = begin, EasingFunction = Decelerate() });
+    }
+
+    void Exit(FrameworkElement p)
+    {
+        var fade = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(ExitMs));
+        fade.Completed += (_, _) =>
+        {
+            if (_activePanel == p) return;   // the user switched back to this page during the fade
+            p.Visibility = Visibility.Collapsed;
+            Reset(p);
+        };
+        p.BeginAnimation(UIElement.OpacityProperty, fade);
     }
 
     // ---------------- keyboard backlight ----------------
@@ -668,10 +727,9 @@ public partial class MainWindow : Window
 
     void SettingsBtn_Click(object s, RoutedEventArgs e)
     {
-        if (SettingsPanel.Visibility == Visibility.Visible) { Tab_Click(this, e); return; }   // second press: back to the tab
-        FanPanel.Visibility = KbPanel.Visibility = BatPanel.Visibility = SysPanel.Visibility = Visibility.Collapsed;
+        if (SettingsPanel.Visibility == Visibility.Visible) { ShowPage(_lastPage ?? FanPanel); return; }   // second press: back to the tab it came from
         RefreshSettings();
-        SettingsPanel.Visibility = Visibility.Visible;
+        ShowPage(SettingsPanel);
     }
 
     void RefreshSettings()
