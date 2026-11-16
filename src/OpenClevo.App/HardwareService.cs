@@ -42,6 +42,9 @@ public sealed class HardwareService : IDisposable
     readonly GpuClock _gpuClock = new();
     bool _polling;
 
+    /// <summary>Camera power from the firmware (kept fresh by the poll; the Fn key changes it too). Null until the first read.</summary>
+    public bool? CameraOn { get; private set; }
+
     public int CpuMhz { get; private set; }
     public int GpuMhz { get; private set; }
 
@@ -51,12 +54,13 @@ public sealed class HardwareService : IDisposable
         _polling = true;
         try
         {
-            var (fans, cpu, gpu) = await Task.Run(() =>
+            var (fans, cpu, gpu, cam) = await Task.Run(() =>
             {
                 _pollBridge ??= AcpiBridge.Open();
-                return (_pollBridge.ReadFans(), _cpuClock.Read(), _gpuClock.Read(NvidiaPower.IsOn != false));   // never touch a switched-off GPU
+                return (_pollBridge.ReadFans(), _cpuClock.Read(), _gpuClock.Read(NvidiaPower.IsOn != false),   // never touch a switched-off GPU
+                        _pollBridge.ReadCameraPower());
             });
-            Fans = fans; CpuMhz = cpu; GpuMhz = gpu;
+            Fans = fans; CpuMhz = cpu; GpuMhz = gpu; CameraOn = cam;
             foreach (var f in Fans)
             {
                 if (!History.TryGetValue(f.Index, out var h)) History[f.Index] = h = new();
@@ -101,6 +105,13 @@ public sealed class HardwareService : IDisposable
         catch (Exception ex) { Fail(ex); }
     }
     public void SetCharger(FlexiCharger f) => Run(() => Bridge.SetFlexiCharger(f));
+
+    /// <summary>Cuts or restores the camera's power in firmware (what the Fn camera key does).</summary>
+    public void SetCameraPower(bool on)
+    {
+        try { Bridge.SetCameraPower(on); CameraOn = on; }
+        catch (Exception ex) { Fail(ex); throw; }
+    }
     public void ApplyCurves(IReadOnlyList<FanCurve> curves) => Run(() => Bridge.ApplyFanCurves(curves));
 
     void Run(Action a)

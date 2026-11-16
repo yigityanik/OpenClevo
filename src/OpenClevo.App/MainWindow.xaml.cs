@@ -189,7 +189,7 @@ public partial class MainWindow : Window
     void RefreshSystemSwitches()
     {
         SwWinLock.IsChecked = SystemToggles.WinKeyLock;
-        SwCamera.IsChecked = SystemToggles.Camera;
+        SwCamera.IsChecked = _hw.CameraOn ?? SystemToggles.Camera;   // firmware state (follows the Fn key); the Windows switch only if the driver is missing
         SwTouchpad.IsEnabled = SystemToggles.TouchpadSupported;
         SwTouchpad.IsChecked = SystemToggles.Touchpad;
         SwNum.IsChecked = SystemToggles.NumLock;
@@ -233,7 +233,11 @@ public partial class MainWindow : Window
         try
         {
             if (s == SwWinLock) SystemToggles.WinKeyLock = on;
-            else if (s == SwCamera) SystemToggles.Camera = on;
+            else if (s == SwCamera)
+            {
+                try { _hw.SetCameraPower(on); }
+                catch { SystemToggles.Camera = on; }   // no driver: fall back to Windows' own camera privacy switch
+            }
             else if (s == SwTouchpad) SystemToggles.Touchpad = on;
             else if (s == SwNum) SystemToggles.NumLock = on;
             else if (s == SwScroll) SystemToggles.ScrollLock = on;

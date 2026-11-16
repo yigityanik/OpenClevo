@@ -42,8 +42,9 @@ static class SystemToggles
     {
         if (code >= 0)
         {
-            int vk = Marshal.ReadInt32(l);   // KBDLLHOOKSTRUCT.vkCode
-            if (vk is 0x5B or 0x5C) return (IntPtr)1;   // left / right Windows key
+            int vk = Marshal.ReadInt32(l);                       // KBDLLHOOKSTRUCT.vkCode
+            bool injected = (Marshal.ReadInt32(l, 8) & 0x10) != 0;   // LLKHF_INJECTED: let our own touchpad shortcut through
+            if (vk is 0x5B or 0x5C && !injected) return (IntPtr)1;   // left / right Windows key
         }
         return CallNextHookEx(_hook, code, w, l);
     };
@@ -72,16 +73,48 @@ static class SystemToggles
     // ---- touchpad ----
     public static bool TouchpadSupported => Registry.CurrentUser.OpenSubKey(TouchpadKey) != null;
 
+    /// <summary>
+    /// Windows only applies the touchpad switch when it gets the shortcut Win+Ctrl+F24 (that is what Clevo's own Fn key
+    /// sends); writing the registry value alone changes the setting but not the running touchpad.
+    /// </summary>
     public static bool Touchpad
     {
         get => Registry.CurrentUser.OpenSubKey(TouchpadKey)?.GetValue("Enabled") as int? == 1;
-        set { using var k = Registry.CurrentUser.CreateSubKey(TouchpadKey); k.SetValue("Enabled", value ? 1 : 0, RegistryValueKind.DWord); }
+        set
+        {
+            if (Touchpad == value) return;
+            SendWinCtrlF24();
+            for (int i = 0; i < 20 && Touchpad != value; i++) Thread.Sleep(50);   // Windows updates the value a moment later
+            if (Touchpad != value)   // shortcut ignored (disabled on this system): at least keep the setting
+            {
+                using var k = Registry.CurrentUser.CreateSubKey(TouchpadKey);
+                k.SetValue("Enabled", value ? 1 : 0, RegistryValueKind.DWord);
+            }
+        }
+    }
+
+    static void SendWinCtrlF24()
+    {
+        byte[] keys = { 0x5B /* left Windows */, 0xA2 /* left Ctrl */, 0x87 /* F24 */ };
+        foreach (var k in keys) keybd_event(k, 0, 0, UIntPtr.Zero);
+        foreach (var k in keys.Reverse()) keybd_event(k, 0, 2 /* key up */, UIntPtr.Zero);
     }
 
     // ---- camera ----
+    // Windows has two camera privacy switches per user: one for Store apps and one for desktop apps (Chrome, Zoom, ...).
+    // The Fn key cuts the camera's power in firmware; this switch only blocks apps from using it.
+    const string CameraDesktopKey = CameraKey + @"\NonPackaged";
+
     public static bool Camera
     {
-        get => (Registry.CurrentUser.OpenSubKey(CameraKey)?.GetValue("Value") as string) != "Deny";
-        set { using var k = Registry.CurrentUser.CreateSubKey(CameraKey); k.SetValue("Value", value ? "Allow" : "Deny", RegistryValueKind.String); }
+        get => (Registry.CurrentUser.OpenSubKey(CameraDesktopKey)?.GetValue("Value") as string) != "Deny";
+        set
+        {
+            foreach (var path in new[] { CameraKey, CameraDesktopKey })
+            {
+                using var k = Registry.CurrentUser.CreateSubKey(path);
+                k.SetValue("Value", value ? "Allow" : "Deny", RegistryValueKind.String);
+            }
+        }
     }
 }

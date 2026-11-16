@@ -7,6 +7,8 @@ public static class DsmFn
     public const int HardwareMonitor = 12;  // fan raw speed, duty, temperatures (read-only, polled by CC40)
     public const int FanCurveRead = 13;     // current 4-point duty curves (read-only)
     public const int FanCurveWrite = 14;    // apply 4-point duty curves
+    public const int CameraState = 6;       // read: 1 = camera powered, 0 = off (the Fn camera key flips it)
+    public const int CameraSet = 34;        // write: data = u32 0/1 (CC40: SetWMI(34, value)); when off the camera leaves Windows
     public const int ProductInfo = 17;
     public const int SetFeature = 121;      // 0x79: data[0..2] = value, data[3] = sub-command
 }
@@ -150,6 +152,16 @@ public static class ClevoExtensions
         var data = BitConverter.GetBytes(value);
         data[3] = sub;
         return br.Call(DsmFn.SetFeature, data).Integer ?? 0;
+    }
+
+    /// <summary>Camera power as the firmware reports it (also changes with the Fn camera key). Null when the call returns nothing.</summary>
+    public static bool? ReadCameraPower(this AcpiBridge br) => br.Call(DsmFn.CameraState).Integer is uint v ? v == 1 : null;
+
+    /// <summary>Switches the camera's power like Clevo's CC40 does: _DSM 34 with 0/1, and the preference kept at AppSettings 0x106.</summary>
+    public static void SetCameraPower(this AcpiBridge br, bool on)
+    {
+        br.Call(DsmFn.CameraSet, BitConverter.GetBytes(on ? 1u : 0u));
+        br.WriteAppSettings(1, 6, [(byte)(on ? 1 : 0)]);
     }
 
     /// <summary>Flags FnKey adds in Performance mode, read from the same AppSettings bytes FnKey checks (0x120 → 0x80, 0x408 → 0x40).</summary>
