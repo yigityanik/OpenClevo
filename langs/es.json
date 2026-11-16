@@ -151,5 +151,6 @@
   "setup.uninst_shortcuts": "Eliminando accesos directos y la entrada de inicio…",
   "setup.uninst_registry": "Limpiando el registro…",
   "setup.uninst_files": "Eliminando archivos…",
-  "tray.running": "OpenClevo sigue ejecutándose en la bandeja del sistema"
+  "tray.running": "OpenClevo sigue ejecutándose en la bandeja del sistema",
+  "settings.version": "Versión {0}"
 }

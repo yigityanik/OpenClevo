@@ -151,5 +151,6 @@
   "setup.uninst_shortcuts": "Kısayollar ve başlangıç kaydı siliniyor…",
   "setup.uninst_registry": "Kayıt defteri temizleniyor…",
   "setup.uninst_files": "Dosyalar siliniyor…",
-  "tray.running": "OpenClevo sistem tepsisinde çalışmaya devam ediyor"
+  "tray.running": "OpenClevo sistem tepsisinde çalışmaya devam ediyor",
+  "settings.version": "Sürüm {0}"
 }

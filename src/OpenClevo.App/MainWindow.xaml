@@ -299,6 +299,34 @@
                 </Border>
             </Grid>
 
+            <!-- SETTINGS: opened by the gear, shown in place of the tab pages; large thin title, one language box, two switches, version -->
+            <Grid x:Name="SettingsPanel" Visibility="Collapsed">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <TextBlock Text="{loc:T settings.title}" FontFamily="{StaticResource Display}" FontSize="34" FontWeight="Light" Margin="12,0,0,18"/>
+                <!-- language: top right; the running one is large, the others small and clickable -->
+                <StackPanel x:Name="LangList" Grid.Column="1" Grid.RowSpan="4" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,40,0"/>
+                <!-- switches: a 622 px row each, a hairline between them, centred in the middle band as in the mockup -->
+                <StackPanel Grid.Row="2" Margin="12,0,0,0" VerticalAlignment="Center" HorizontalAlignment="Left" Width="622">
+                    <CheckBox x:Name="StartupToggle" Style="{StaticResource Toggle}" Width="622" Margin="0,14" Click="StartupToggle_Click">
+                        <TextBlock Text="{loc:T settings.startup}"/>
+                    </CheckBox>
+                    <Border Height="1" Background="{DynamicResource Line}"/>
+                    <CheckBox x:Name="TrayToggle" Style="{StaticResource Toggle}" Width="622" Margin="0,14" Click="TrayToggle_Click">
+                        <TextBlock Text="{loc:T settings.tray}"/>
+                    </CheckBox>
+                </StackPanel>
+                <TextBlock x:Name="VersionText" Grid.Row="3" Style="{StaticResource Caption}" Foreground="{DynamicResource Faint}" Margin="12,0,0,0"/>
+            </Grid>
+
             <!-- BATTERY & SYSTEM -->
             <Grid x:Name="BatPanel" Visibility="Collapsed">
                 <Grid x:Name="BatteryContent">

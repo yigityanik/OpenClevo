@@ -1,7 +1,9 @@
 using OpenClevo.Localization;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
@@ -44,6 +46,7 @@ public partial class MainWindow : Window
         FlowDirection = OpenClevo.Localization.Loc.Flow;   // Arabic mirrors the window
         _hw = hw;
         UpdateThemeIcon(App.IsLightTheme, animate: false);
+        BuildLangList();
         _kb = kb;
         FitToScreen();
         CpuName.Text = HardwareNames.Cpu();
@@ -249,6 +252,7 @@ public partial class MainWindow : Window
         KbPanel.Visibility = TabKb.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         BatPanel.Visibility = TabBat.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         SysPanel.Visibility = TabSys.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        SettingsPanel.Visibility = Visibility.Collapsed;   // a tab takes the place of the settings page
     }
 
     // ---------------- keyboard backlight ----------------
@@ -659,7 +663,86 @@ public partial class MainWindow : Window
 
     void RevertBtn_Click(object s, RoutedEventArgs e) => OnSettings();
 
-    void SettingsBtn_Click(object s, RoutedEventArgs e) => new SettingsWindow { Owner = this }.ShowDialog();
+    // ---- settings page: inside the window, opened and closed by the gear ----
+    const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+
+    void SettingsBtn_Click(object s, RoutedEventArgs e)
+    {
+        if (SettingsPanel.Visibility == Visibility.Visible) { Tab_Click(this, e); return; }   // second press: back to the tab
+        FanPanel.Visibility = KbPanel.Visibility = BatPanel.Visibility = SysPanel.Visibility = Visibility.Collapsed;
+        RefreshSettings();
+        SettingsPanel.Visibility = Visibility.Visible;
+    }
+
+    void RefreshSettings()
+    {
+        UpdateLangList();
+        StartupToggle.IsChecked = Registry.CurrentUser.OpenSubKey(RunKey)?.GetValue("OpenClevo") != null;
+        TrayToggle.IsChecked = CloseToTray;
+        var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "";
+        VersionText.Text = string.Format(Loc.T("settings.version"), version);
+    }
+
+    /// <summary>Builds the language list once: one small clickable line per language.</summary>
+    void BuildLangList()
+    {
+        foreach (var code in Loc.Languages)
+        {
+            var line = new TextBlock
+            {
+                Text = Loc.NativeName(code),
+                Tag = code,
+                TextAlignment = TextAlignment.Right,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                FontFamily = (FontFamily)FindResource("Display"),
+                FontWeight = FontWeights.Light,
+                Cursor = Cursors.Hand,
+                Margin = new Thickness(0, 2, 0, 2),   // ~37 px per line, as in the mockup
+            };
+            line.MouseLeftButtonUp += LangItem_Click;
+            LangList.Children.Add(line);
+        }
+    }
+
+    /// <summary>The language the window is running in is shown large; the others stay small and muted.</summary>
+    void UpdateLangList()
+    {
+        string running = Loc.Current;
+        foreach (TextBlock line in LangList.Children)
+        {
+            bool sel = (string)line.Tag == running;
+            line.FontSize = sel ? 62 : 24;
+            line.SetResourceReference(TextBlock.ForegroundProperty, sel ? "Text" : "Muted");
+        }
+    }
+
+    /// <summary>A click asks first; the choice is saved and applied only when the user confirms the restart.</summary>
+    void LangItem_Click(object s, MouseButtonEventArgs e)
+    {
+        string next = (string)((TextBlock)s).Tag;
+        if (next == Loc.Current) return;
+        if (Dialog.Ask(this, Loc.T("settings.lang_restart_title"), Loc.T("settings.lang_restart_body"),
+                Loc.T("settings.lang_restart_btn"), Loc.T("common.cancel")) != 0) return;
+        Loc.SavedLanguage = next;
+        Restart();
+    }
+
+    /// <summary>Starts a new copy after this one has exited (this copy still holds the single-instance lock for a moment).</summary>
+    static void Restart()
+    {
+        Process.Start(new ProcessStartInfo("cmd.exe", $"/c ping -n 2 127.0.0.1 >nul & start \"\" \"{Environment.ProcessPath}\"")
+        { UseShellExecute = false, CreateNoWindow = true });
+        Application.Current.Shutdown();
+    }
+
+    void StartupToggle_Click(object s, RoutedEventArgs e)
+    {
+        using var k = Registry.CurrentUser.CreateSubKey(RunKey);
+        if (StartupToggle.IsChecked == true) k.SetValue("OpenClevo", $"\"{Environment.ProcessPath}\" --tray");
+        else k.DeleteValue("OpenClevo", false);
+    }
+
+    void TrayToggle_Click(object s, RoutedEventArgs e) => CloseToTray = TrayToggle.IsChecked == true;
 
     // ---- theme toggle: the sun shows in the light theme, the moon in the dark one ----
     void ThemeBtn_Click(object s, RoutedEventArgs e)

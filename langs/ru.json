@@ -151,5 +151,6 @@
   "setup.uninst_shortcuts": "Удаление ярлыков и записи автозапуска…",
   "setup.uninst_registry": "Очистка реестра…",
   "setup.uninst_files": "Удаление файлов…",
-  "tray.running": "OpenClevo продолжает работать в трее"
+  "tray.running": "OpenClevo продолжает работать в трее",
+  "settings.version": "Версия {0}"
 }

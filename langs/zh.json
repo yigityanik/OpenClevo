@@ -151,5 +151,6 @@
   "setup.uninst_shortcuts": "正在删除快捷方式和开机启动项…",
   "setup.uninst_registry": "正在清理注册表…",
   "setup.uninst_files": "正在删除文件…",
-  "tray.running": "OpenClevo 继续在系统托盘中运行"
+  "tray.running": "OpenClevo 继续在系统托盘中运行",
+  "settings.version": "版本 {0}"
 }
