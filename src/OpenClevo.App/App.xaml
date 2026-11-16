@@ -36,6 +36,26 @@
                 <Setter Property="Typography.NumeralAlignment" Value="Tabular"/>
             </Style>
 
+            <!-- Tooltip: the same flat surface as the chips (the default one is a white box with a border) -->
+            <Style TargetType="ToolTip">
+                <Setter Property="Foreground" Value="{DynamicResource Text}"/>
+                <Setter Property="Background" Value="{DynamicResource CardHi}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource Line}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="9,5"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="HasDropShadow" Value="False"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ToolTip">
+                            <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="4" Padding="{TemplateBinding Padding}">
+                                <ContentPresenter TextElement.Foreground="{TemplateBinding Foreground}" TextElement.FontSize="{TemplateBinding FontSize}"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <!-- Grouped surface: no border, one corner radius, hairline separators inside -->
             <Style x:Key="Group" TargetType="Border">
                 <Setter Property="Background" Value="{DynamicResource Card}"/>
