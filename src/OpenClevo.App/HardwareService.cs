@@ -45,6 +45,9 @@ public sealed class HardwareService : IDisposable
     /// <summary>Camera power from the firmware (kept fresh by the poll; the Fn key changes it too). Null until the first read.</summary>
     public bool? CameraOn { get; private set; }
 
+    /// <summary>The Fn camera key changed the camera power: take the new state now instead of waiting for the next poll.</summary>
+    public void NoteCameraPower(bool on) => CameraOn = on;
+
     public int CpuMhz { get; private set; }
     public int GpuMhz { get; private set; }
 

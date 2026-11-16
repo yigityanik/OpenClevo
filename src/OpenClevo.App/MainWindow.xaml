@@ -323,6 +323,10 @@
                     <CheckBox x:Name="TrayToggle" Style="{StaticResource Toggle}" Width="622" Margin="0,14" Click="TrayToggle_Click">
                         <TextBlock Text="{loc:T settings.tray}"/>
                     </CheckBox>
+                    <Border Height="1" Background="{DynamicResource Line}"/>
+                    <CheckBox x:Name="OsdToggle" Style="{StaticResource Toggle}" Width="622" Margin="0,14" Click="OsdToggle_Click">
+                        <TextBlock Text="{loc:T settings.osd}"/>
+                    </CheckBox>
                 </StackPanel>
                 <TextBlock x:Name="VersionText" Grid.Row="3" Style="{StaticResource Caption}" Foreground="{DynamicResource Faint}" Margin="12,0,0,0"/>
             </Grid>

@@ -199,6 +199,9 @@ public partial class MainWindow : Window
         SwNvidia.IsChecked = nv == true;
     }
 
+    /// <summary>Re-reads the system switches now (a Fn key just changed one of them).</summary>
+    public void SyncSystemSwitches() => RefreshSystemSwitches();
+
     bool _nvBusy;
 
     /// <summary>Switches the NVIDIA GPU; the first time it explains and sets up the privileged helper (one Windows prompt).</summary>
@@ -741,6 +744,7 @@ public partial class MainWindow : Window
         UpdateLangList();
         StartupToggle.IsChecked = Registry.CurrentUser.OpenSubKey(RunKey)?.GetValue("OpenClevo") != null;
         TrayToggle.IsChecked = CloseToTray;
+        OsdToggle.IsChecked = OsdHost.Enabled;
         var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "";
         VersionText.Text = string.Format(Loc.T("settings.version"), version);
     }
@@ -805,6 +809,8 @@ public partial class MainWindow : Window
     }
 
     void TrayToggle_Click(object s, RoutedEventArgs e) => CloseToTray = TrayToggle.IsChecked == true;
+
+    void OsdToggle_Click(object s, RoutedEventArgs e) => OsdHost.Enabled = OsdToggle.IsChecked == true;
 
     // ---- theme toggle: the sun shows in the light theme, the moon in the dark one ----
     void ThemeBtn_Click(object s, RoutedEventArgs e)

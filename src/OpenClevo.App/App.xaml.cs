@@ -54,6 +54,9 @@ public partial class App : Application
         SystemToggles.Restore();
         _tray = new TrayIcon(_hw, ShowWindow, () => Shutdown());
         _hw.Start();
+        _fn = new Core.FnEvents();
+        _osd = new OsdHost();
+        _fn.Received += OnFnEvent;   // on the listener thread: the notice must not wait for the main window
 
         // resume a software keyboard effect chosen in an earlier session
         if (KeyboardEffectEngine.Saved is var saved and not SoftEffect.None && _hw.Keyboard is { } k && Core.KeyboardExtensions.IsSupportedType(k.Type))
@@ -127,6 +130,28 @@ public partial class App : Application
         listener.Start();
     }
 
+    Core.FnEvents? _fn;
+    OsdHost? _osd;
+
+    /// <summary>An Fn key was pressed: the firmware/Windows already did the work, so show a notice and keep the switches in step.</summary>
+    async void OnFnEvent(long code)
+    {
+        const string Camera = "", Touchpad = "";
+        if (code is Core.FnEvents.CameraOn or Core.FnEvents.CameraOff)
+        {
+            bool on = code == Core.FnEvents.CameraOn;
+            _osd?.Notify(Camera, Loc.T(on ? "osd.camera_on" : "osd.camera_off"), on);
+            _ = Dispatcher.BeginInvoke(() => { _hw?.NoteCameraPower(on); _window?.SyncSystemSwitches(); });
+        }
+        else if (code == Core.FnEvents.Touchpad)
+        {
+            await Task.Delay(250);   // Windows applies the toggle a moment after the key
+            bool on = SystemToggles.Touchpad;
+            _osd?.Notify(Touchpad, Loc.T(on ? "osd.touchpad_on" : "osd.touchpad_off"), on);
+            _ = Dispatcher.BeginInvoke(() => _window?.SyncSystemSwitches());
+        }
+    }
+
     /// <summary>Tells the user the app is still running in the tray (after the window is closed to the tray).</summary>
     public void HintTray() => _tray?.ShowHint(Loc.T("tray.running"));
 
@@ -141,6 +166,8 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         _tray?.Dispose();
+        _fn?.Dispose();
+        _osd?.Dispose();
         SystemToggles.Shutdown();
         _idle?.Dispose();
         _kb?.Dispose();
