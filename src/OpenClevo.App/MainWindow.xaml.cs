@@ -889,9 +889,35 @@ public partial class MainWindow : Window
         if (!_busy && _cpuEdit == null && _gpuEdit == null) _hw.ReloadSettings();   // pick up Fn-key changes
     }
 
+    /// <summary>
+    /// Esc steps back: from the settings to the page they were opened from (same as pressing the gear again), and from
+    /// any other page to the fan page, which is home.
+    /// </summary>
+    protected override void OnPreviewKeyDown(KeyEventArgs e)
+    {
+        base.OnPreviewKeyDown(e);
+        if (e.Key != Key.Escape) return;
+        if (SettingsPanel.Visibility == Visibility.Visible)
+        {
+            ShowPage(_lastPage ?? FanPanel);
+            e.Handled = true;
+        }
+        else if (_activePanel != null && _activePanel != FanPanel && Keyboard.FocusedElement is not System.Windows.Controls.TextBox)
+        {
+            ShowPage(FanPanel);
+            e.Handled = true;
+        }
+    }
+
+    /// <summary>Back to the fan page without animation worth seeing: called when the window goes to the tray, so it opens on home.</summary>
+    void GoHome()
+    {
+        if (_activePanel != null && _activePanel != FanPanel) ShowPage(FanPanel);
+    }
+
     protected override void OnClosing(CancelEventArgs e)
     {
-        if (CloseToTray) { e.Cancel = true; Hide(); ((App)Application.Current).HintTray(); App.TrimMemory(); }
+        if (CloseToTray) { e.Cancel = true; Hide(); GoHome(); ((App)Application.Current).HintTray(); App.TrimMemory(); }
         else Application.Current.Shutdown();
         base.OnClosing(e);
     }
