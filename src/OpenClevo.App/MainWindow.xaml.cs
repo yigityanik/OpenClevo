@@ -103,18 +103,20 @@ public partial class MainWindow : Window
     /// </summary>
     async Task OnModeClicked(PowerMode mode)
     {
+        if (_busy) return;
+        // busy from the click on: when the question closes the window is activated again, and that would re-read the
+        // firmware (still the old mode) and flash the old mode in the indicator before the new one is applied
+        _busy = true;
         var prev = _hw.PowerMode;
         bool gpuOff = false;
         if (mode == PowerMode.PowerSaving && prev != PowerMode.PowerSaving && NvidiaPower.IsOn == true)
         {
             int r = Dialog.Ask(this, Loc.T("power.saving"), Loc.T("power.gpu_question"), Loc.T("power.gpu_off"), Loc.T("power.mode_only"), Loc.T("common.cancel"));
-            if (r is 2 or -1) { OnSettings(); return; }
+            if (r is 2 or -1) { _busy = false; OnSettings(); return; }
             gpuOff = r == 0;
         }
         // The firmware calls (~0.3 s) run on a worker thread so the letter animation of the mode words keeps playing;
         // the settings reload (UI thread) waits until the animation is over.
-        if (_busy) return;
-        _busy = true;
         try { await Task.Run(() => { using var br = AcpiBridge.Open(); br.SetPowerMode(mode); }); }
         catch (Exception ex) { Dialog.Info(this, Loc.F("power.apply_failed", ex.Message)); }
         await Task.Delay(800);
