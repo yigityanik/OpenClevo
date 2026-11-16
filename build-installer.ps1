@@ -6,7 +6,8 @@ $zip     = Join-Path $root 'src\OpenClevo.Setup\Payload.zip'
 $out     = Join-Path $root 'build'
 
 Remove-Item $payload, $zip -Recurse -Force -ErrorAction SilentlyContinue
-dotnet publish (Join-Path $root 'src\OpenClevo.App') -c Release -r win-x64 --self-contained false -o $payload --nologo -p:DebugType=None -p:DebugSymbols=false
+# self-contained: the .NET runtime is inside the exe, so nothing has to be installed on the user's PC. One compressed file.
+dotnet publish (Join-Path $root 'src\OpenClevo.App') -c Release -r win-x64 --self-contained true -o $payload --nologo -p:DebugType=None -p:DebugSymbols=false -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
 if ($LASTEXITCODE -ne 0) { throw 'publish failed' }
 
 # Acpi Bridge driver (ACPI\CLV0001): the app talks to it, so the setup installs it. Taken from drivers\AcpiBridge, or
@@ -29,7 +30,7 @@ if (Test-Path (Join-Path $drv 'AcpiBridge.sys')) {
 
 Compress-Archive -Path (Join-Path $payload '*') -DestinationPath $zip -Force
 
-dotnet publish (Join-Path $root 'src\OpenClevo.Setup') -c Release -r win-x64 --self-contained false -o $out --nologo
+dotnet publish (Join-Path $root 'src\OpenClevo.Setup') -c Release -r win-x64 --self-contained true -o $out --nologo -p:EnableCompressionInSingleFile=true
 if ($LASTEXITCODE -ne 0) { throw 'setup build failed' }
 
 Remove-Item $zip -Force

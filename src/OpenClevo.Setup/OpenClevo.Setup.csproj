@@ -17,10 +17,14 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <SatelliteResourceLanguages>tr</SatelliteResourceLanguages>
-    <!-- one self-contained-looking file: the setup and the uninstaller copy run from a single exe -->
+    <!-- one file that runs on a PC without .NET installed (published self-contained, see build-installer.ps1) -->
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Page Include="..\Shared\SetupTheme.xaml" Link="SetupTheme.xaml" />
+  </ItemGroup>
 
   <ItemGroup>
     <!-- the app, zipped by build.ps1 -->
