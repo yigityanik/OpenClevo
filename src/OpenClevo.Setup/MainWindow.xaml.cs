@@ -17,7 +17,7 @@ public partial class MainWindow : Window
     const double RowH = 44, ViewH = 120, VBig = 40, VNear = 22, VFar = 16;
     const double DotSize = 5, DotBigScale = 1.2;
     static readonly double NearScale = VNear / VBig, FarScale = VFar / VBig;
-    const double NearOpacity = 0.6, FarOpacity = 0;
+    const double NearOpacity = 0.6;
 
     static readonly Color TextColor = Color.FromRgb(0xEC, 0xEC, 0xEE), FaintColor = Color.FromRgb(0x5B, 0x5B, 0x60);
     static readonly Color DotOff = Color.FromRgb(0x2A, 0x2A, 0x2D);
@@ -37,7 +37,8 @@ public partial class MainWindow : Window
     readonly List<ScaleTransform> _dotScales = new();
     readonly List<SolidColorBrush> _dotBrushes = new();
     int _sel;
-    bool _picked;                     // the user has scrolled or clicked: Next becomes available
+    bool _picked;                     // the user has chosen a language (click, arrow or wheel): Next becomes available
+    int _wheelAccum;                  // mouse-wheel units not yet turned into a step
 
     public MainWindow() : this(null, 0) { }
 
@@ -88,21 +89,23 @@ public partial class MainWindow : Window
         _picked = true;
         Refresh(animate: false);
         Loaded += (_, _) => Refresh(animate: false);   // positioned again once the window has its real size
+        KeyDown += Window_KeyDown;
         StartWheelHint();
         Show(page);
     }
 
-    /// <summary>Moves the selection: the chosen language grows, the others shrink; the welcome texts cross-fade.</summary>
+    /// <summary>Selects language <paramref name="i"/> (clamped): the column glides there and the welcome texts change.</summary>
     void Select(int i)
     {
         int n = Loc.Languages.Length;
-        _sel = (i % n + n) % n;
+        _sel = Math.Clamp(i, 0, n - 1);
         _picked = true;
         Loc.Set(Loc.Languages[_sel]);
         Refresh(animate: true);
         Show(_page);
     }
 
+    /// <summary>Lays the column out for the selected language; animated after a choice, set directly on first layout.</summary>
     void Refresh(bool animate)
     {
         for (int i = 0; i < _words.Count; i++)
@@ -110,7 +113,7 @@ public partial class MainWindow : Window
             int d = Math.Abs(i - _sel);
             bool on = d == 0;
             double scale = on ? 1 : d == 1 ? NearScale : FarScale;
-            double opacity = on ? 1 : d == 1 ? NearOpacity : FarOpacity;
+            double opacity = on ? 1 : d == 1 ? NearOpacity : 0;
             double dot = on ? DotBigScale : 1;
             Color colour = on ? TextColor : FaintColor;
             Color dotColour = on ? TextColor : DotOff;
@@ -135,15 +138,14 @@ public partial class MainWindow : Window
             }
         }
 
-        double target = StripPos(_sel);
-        if (animate) Animate(VStripMove, TranslateTransform.YProperty, target, 600, Slide);
-        else VStripMove.Y = target;
+        if (animate) Animate(VStripMove, TranslateTransform.YProperty, StripPos(_sel), 600, Slide);
+        else VStripMove.Y = StripPos(_sel);
 
         string heading = Loc.T("setup.heading"), body = Loc.T("setup.welcome_body");
         if (animate)
         {
-            CrossFade(HeadingText, heading);
-            CrossFade(DescText, body);
+            if (HeadingText.Text != heading) CrossFade(HeadingText, heading);
+            if (DescText.Text != body) CrossFade(DescText, body);
         }
         else
         {
@@ -199,14 +201,44 @@ public partial class MainWindow : Window
         });
     }
 
+    // ---- language picker: arrows, direct clicks on the neighbours, keys and the mouse wheel all make one step each ----
+
+    void Up_Click(object s, RoutedEventArgs e) => Step(-1);
+    void Down_Click(object s, RoutedEventArgs e) => Step(1);
+
+    void Step(int direction)
+    {
+        if (_page != 0) return;
+        Select(_sel + direction);
+    }
+
+    void Window_KeyDown(object s, KeyEventArgs e)
+    {
+        if (_page != 0) return;
+        if (e.Key == Key.Up) { Step(-1); e.Handled = true; }
+        else if (e.Key == Key.Down) { Step(1); e.Handled = true; }
+    }
+
+    /// <summary>A click on the neighbour above moves to the previous language, below to the next; on the selected one, nothing.</summary>
+    void Strip_Click(object s, MouseButtonEventArgs e)
+    {
+        double y = e.GetPosition(VStripHost).Y, mid = VStripHost.ActualHeight / 2, half = RowH / 2;
+        if (y < mid - half) Step(-1);
+        else if (y > mid + half) Step(1);
+    }
+
+    /// <summary>One notch of the mouse wheel (120 units) is one language. Touchpad scrolls add up until they make a notch.</summary>
     void Welcome_Wheel(object s, MouseWheelEventArgs e)
     {
         if (_page != 0) return;
-        Select(_sel + (e.Delta < 0 ? 1 : -1));
         e.Handled = true;
+        if (Math.Sign(e.Delta) != Math.Sign(_wheelAccum)) _wheelAccum = 0;
+        _wheelAccum += e.Delta;
+        if (Math.Abs(_wheelAccum) < 120) return;
+        int direction = _wheelAccum < 0 ? 1 : -1;   // wheel down (negative) moves towards the next language
+        _wheelAccum = 0;
+        Step(direction);
     }
-
-    void Strip_Click(object s, MouseButtonEventArgs e) => Select(_sel + 1);
 
     void Show(int page)
     {
@@ -277,12 +309,14 @@ public partial class MainWindow : Window
 
     void Close_Click(object s, RoutedEventArgs e) => Close();
 
-    // drag the window from empty areas only; a press on a button must not move the window
+    // drag the window from empty areas only: a press on a button or on the language picker must not move the window
     void Drag(object s, MouseButtonEventArgs e)
     {
         if (e.ButtonState != MouseButtonState.Pressed) return;
         for (DependencyObject? d = e.OriginalSource as DependencyObject; d != null; d = System.Windows.Media.VisualTreeHelper.GetParent(d))
-            if (d is System.Windows.Controls.Primitives.ButtonBase) return;
+        {
+            if (d is System.Windows.Controls.Primitives.ButtonBase || d == VerticalPicker) return;
+        }
         DragMove();
     }
 }

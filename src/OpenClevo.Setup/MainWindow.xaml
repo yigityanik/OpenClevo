@@ -37,6 +37,15 @@
                             </Canvas>
                         </Border>
                         <StackPanel x:Name="VDots" Orientation="Vertical" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,40,0"/>
+                        <!-- arrows above and below the dots: one language per click -->
+                        <Button x:Name="UpBtn" Width="20" Height="18" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,32,0" Click="Up_Click" Background="Transparent" BorderThickness="0" Cursor="Hand">
+                            <Button.Template><ControlTemplate TargetType="Button"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></ControlTemplate></Button.Template>
+                            <TextBlock Text="&#xE70E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" Foreground="{StaticResource Muted}"/>
+                        </Button>
+                        <Button x:Name="DownBtn" Width="20" Height="18" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,32,0" Click="Down_Click" Background="Transparent" BorderThickness="0" Cursor="Hand">
+                            <Button.Template><ControlTemplate TargetType="Button"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></ControlTemplate></Button.Template>
+                            <TextBlock Text="&#xE70D;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="10" Foreground="{StaticResource Muted}"/>
+                        </Button>
                     </Grid>
                 </StackPanel>
 
