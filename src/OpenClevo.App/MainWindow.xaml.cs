@@ -470,15 +470,34 @@ public partial class MainWindow : Window
     void LoadKeyboard()
     {
         var k = _hw.Keyboard;
-        bool ok = k != null && KeyboardExtensions.IsSupportedType(k.Type);
-        KbPanel.IsEnabled = ok;
-        if (!ok) return;
+        if (k == null) { KbPanel.IsEnabled = false; return; }   // no driver: the page stays dimmed
+        bool ok = KeyboardExtensions.IsSupportedType(k.Type);
+        KbPanel.IsEnabled = true;
+        KbNotice.Visibility = ok ? Visibility.Collapsed : Visibility.Visible;
+        KbBody.Visibility = ok ? Visibility.Visible : Visibility.Collapsed;
+        if (!ok)
+        {
+            // none, per-key (USB controller) or a type we have not seen: say what the firmware reports instead of dimming the page
+            KbNotice.Text = k.Kind switch
+            {
+                KeyboardKind.None => Loc.T("kb.none"),
+                KeyboardKind.PerKey => Loc.F("kb.perkey", k.Type),
+                _ => Loc.F("kb.unknown", k.Type),
+            };
+            return;
+        }
+        // white backlights only have brightness: no colours or effects to show
+        bool white = k.Kind == KeyboardKind.White;
+        var colorUi = white ? Visibility.Collapsed : Visibility.Visible;
+        KbColorLabel.Visibility = Swatches.Visibility = KbEffectsArea.Visibility = KbSepEffects.Visibility = colorUi;
+        if (white) AllZonesToggle.Visibility = Visibility.Collapsed;
 
         if (!_kbLoaded)   // take colors/effect from Clevo's store once; afterwards the UI is the source of truth
         {
-            _singleZone = k!.Type == 6;
+            _singleZone = k.Kind is KeyboardKind.AllColour or KeyboardKind.White;   // Clevo's own app shows one colour for types 6 and 22
             _kb.SingleZone = _singleZone;
             _zones[0] = k.Left; _zones[1] = k.Middle; _zones[2] = k.Right;
+            if (white) _zones[0] = new Rgb(255, 255, 255);   // a white backlight has no colour to show
             if (_singleZone) _zones[1] = _zones[2] = _zones[0];
             _kbEffect = _singleZone ? KbEffect.Static : k.Effect;
             _kbLoaded = true;
@@ -579,7 +598,8 @@ public partial class MainWindow : Window
 
     void KbApply_Click(object s, RoutedEventArgs e) => KbAct(() =>
     {
-        if (_pSw != SoftEffect.None)
+        if (_hw.Keyboard?.Kind == KeyboardKind.White) { /* brightness only: nothing but the timeout to apply */ }
+        else if (_pSw != SoftEffect.None)
         {
             // put the firmware in static mode once (and store it), then the engine animates
             if (_kb.Current == SoftEffect.None) _hw.ApplyKeyboard(KbEffect.Static, _zones[0], _zones[1], _zones[2]);

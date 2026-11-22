@@ -104,7 +104,7 @@ public sealed class HardwareService : IDisposable
     /// <summary>Fast path for software effects: colors only, no settings reload. Errors are swallowed (next frame retries).</summary>
     public void SetKeyboardColors(Rgb? l, Rgb? m, Rgb? r)
     {
-        try { Bridge.SetKeyboardColors(Keyboard?.Type ?? 6, l, m, r); }
+        try { Bridge.SetKeyboardColors(Keyboard?.Type ?? 6, l, m, r, Keyboard?.Caps); }
         catch (Exception ex) { Fail(ex); }
     }
     public void SetCharger(FlexiCharger f) => Run(() => Bridge.SetFlexiCharger(f));

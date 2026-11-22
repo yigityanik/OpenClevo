@@ -77,6 +77,7 @@ public sealed class KeyboardEffectEngine : IDisposable
         var last = new Rgb?[3];
         var smooth = new double[3][];      // eased colour per zone (temperature / random fade)
         int type = _hw.Keyboard?.Type ?? 6;
+        var caps = _hw.Keyboard?.Caps;   // logo / lightbar follow the colour on laptops that have them
         var rnd = new Random();
         (Rgb From, Rgb To, double Start) fade = (new(255, 0, 0), new(0, 0, 255), 0);
         SoftEffect running = SoftEffect.None;
@@ -195,7 +196,7 @@ public sealed class KeyboardEffectEngine : IDisposable
                     if (last[i] is not { } l || !SameOnWire(l, frame[i], type)) { send[i] = frame[i]; any = true; }
                 if (any)
                 {
-                    br.SetKeyboardColors(type, send[0], send[1], send[2]);
+                    br.SetKeyboardColors(type, send[0], send[1], send[2], caps);
                     for (int i = 0; i < zones; i++) if (send[i] != null) last[i] = send[i];
                 }
             }

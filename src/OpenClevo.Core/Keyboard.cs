@@ -18,9 +18,21 @@ public readonly record struct Rgb(byte R, byte G, byte B)
     public static readonly Rgb Black = new(0, 0, 0);
 }
 
-/// <summary>Keyboard backlight state as Clevo stores it (AppSettings page 2).</summary>
-public sealed record KeyboardState(int Type, int ClevoMode, Rgb Left, Rgb Middle, Rgb Right)
+/// <summary>How Clevo's own app treats a keyboard type: White = brightness only, Zoned = 3-zone RGB with firmware effects,
+/// AllColour = one colour for the whole keyboard (no firmware effects), PerKey = USB per-key controller (not supported yet).</summary>
+public enum KeyboardKind { None, White, Zoned, AllColour, PerKey, Other }
+
+/// <summary>Extra lighting the firmware reports (Clevo's fn 122 bits): logo, lightbar, and boot-effect override (fn 13 byte 43).</summary>
+public readonly record struct KeyboardCaps(bool Logo, bool Lightbar, bool BootEffect);
+
+/// <summary>
+/// Keyboard backlight state. The type and capabilities come from the firmware (so they are right even if Clevo's app never ran);
+/// colours and mode come from Clevo's store (AppSettings page 2), or defaults when that store was never filled (<see cref="Fresh"/>).
+/// </summary>
+public sealed record KeyboardState(int Type, int ClevoMode, Rgb Left, Rgb Middle, Rgb Right, KeyboardCaps? Caps = null, bool Fresh = false)
 {
+    public KeyboardKind Kind => KeyboardExtensions.KindOf(Type);
+
     public KbEffect Effect => ClevoMode switch
     {
         2 => KbEffect.Breathe, 3 => KbEffect.Cycle, 4 => KbEffect.Wave, 5 => KbEffect.Dance,
@@ -42,14 +54,64 @@ public static class KeyboardExtensions
     static readonly byte[] ZoneSub = [0xF0, 0xF1, 0xF2];
     static readonly int[] BrightnessValue = [0, 47, 95, 143, 191];
 
-    /// <summary>Keyboard types FnKey drives through this EC path (others use a USB HID controller).</summary>
-    public static bool IsSupportedType(int type) => type is 1 or 2 or 6 or 22 or 38;
+    /// <summary>Clevo's CC 4.0 keyboard module: type 1 white, 2 (and 38 in FnKey) zoned RGB, 6 and 22 one-colour RGB, 3 / 19 / 35 / 51 / 0xF3 per-key USB.</summary>
+    public static KeyboardKind KindOf(int type) => type switch
+    {
+        0 => KeyboardKind.None,
+        1 => KeyboardKind.White,
+        2 or 38 => KeyboardKind.Zoned,
+        6 or 22 => KeyboardKind.AllColour,
+        3 => KeyboardKind.PerKey,
+        _ => KeyboardKind.Other,
+    };
+
+    /// <summary>Types we can drive through the EC path (others use a USB HID controller).</summary>
+    public static bool IsSupportedType(int type) => KindOf(type) is KeyboardKind.White or KeyboardKind.Zoned or KeyboardKind.AllColour;
+
+    /// <summary>
+    /// Reads the keyboard type and capabilities from the firmware the way Clevo's CC 4.0 does: fn 13 byte 15 is the type
+    /// (3 / 19 / 35 / 51 / 0xF3 all mean per-key), byte 43 bit 0 boot-effect override; fn 122 bit 18 logo, bit 12 lightbar.
+    /// </summary>
+    static (int Type, KeyboardCaps Caps) ReadCapabilities(AcpiBridge br)
+    {
+        int type = 0; bool boot = false;
+        try
+        {
+            var b = br.Call(13).Buffer;
+            if (b is not { Length: > 43 } || b[15] == 0)
+            {
+                br.Call(70, BitConverter.GetBytes(90u));   // CC selects the page first on some models
+                b = br.Call(13).Buffer;
+            }
+            if (b is { Length: > 43 }) { type = b[15]; boot = (b[43] & 1) == 1; }
+        }
+        catch { }
+        if (type is 19 or 35 or 51 or 0xF3) type = 3;
+        uint f122 = 0;
+        try { f122 = br.Call(122).Integer ?? 0; } catch { }
+        return (type, new KeyboardCaps(((f122 >> 18) & 1) == 1, ((f122 >> 12) & 1) == 1, boot));
+    }
 
     public static KeyboardState ReadKeyboard(this AcpiBridge br)
     {
         var s = br.ReadAppSettingsStore();
+        var (fwType, caps) = ReadCapabilities(br);
+        int type = fwType > 0 ? fwType : s[TypeAddr];
+        // testing aid: OPENCLEVO_KBTYPE=1|3|22|99 shows how the page looks for another keyboard type (nothing is sent differently)
+        if (int.TryParse(Environment.GetEnvironmentVariable("OPENCLEVO_KBTYPE"), out int forced)) type = forced is 19 or 35 or 51 or 0xF3 ? 3 : forced;
+        // Clevo's store only has keyboard settings after Clevo's own app ran; on a clean system start from white, static
+        if (s[TypeAddr] == 0) return new KeyboardState(type, 1, new Rgb(255, 255, 255), new Rgb(255, 255, 255), new Rgb(255, 255, 255), caps, Fresh: true);
         Rgb C(int i) { int o = ColorBase + i * 4; return new Rgb(s[o + 1], s[o + 2], s[o + 3]); }
-        return new KeyboardState(s[TypeAddr], s[ModeAddr], C(1), C(2), C(3));
+        return new KeyboardState(type, s[ModeAddr], C(1), C(2), C(3), caps);
+    }
+
+    /// <summary>Logo (0xF6) and lightbar (0xF3) follow the main colour on laptops that have them, as Clevo's "all colour" does.</summary>
+    static void SendExtraZones(AcpiBridge br, int type, KeyboardCaps? caps, Rgb c)
+    {
+        if (caps is not { } k) return;
+        var v = Encode(c, type);
+        if (k.Logo) Send(br, 0xF6, v);
+        if (k.Lightbar) Send(br, 0xF3, v);
     }
 
     static void Send(AcpiBridge br, byte sub, uint value)
@@ -73,11 +135,12 @@ public static class KeyboardExtensions
     }
 
     /// <summary>Sends zone colors only (no store write). Used by software effects; null zones are skipped.</summary>
-    public static void SetKeyboardColors(this AcpiBridge br, int type, Rgb? left, Rgb? middle, Rgb? right)
+    public static void SetKeyboardColors(this AcpiBridge br, int type, Rgb? left, Rgb? middle, Rgb? right, KeyboardCaps? caps = null)
     {
         Rgb?[] z = [left, middle, right];
         for (int i = 0; i < 3; i++)
             if (z[i] is { } c) Send(br, ZoneSub[i], Encode(c, type));
+        if ((left ?? middle ?? right) is { } main) SendExtraZones(br, type, caps, main);
     }
 
     /// <summary>Brightness level 0 (off) to 4, same mapping as FnKey.</summary>
@@ -91,7 +154,10 @@ public static class KeyboardExtensions
         Rgb[] zones = [left, middle, right];
         bool needsColors = effect is KbEffect.Static or KbEffect.Breathe;
         if (needsColors)
+        {
             for (int i = 0; i < 3; i++) Send(br, ZoneSub[i], Encode(zones[i], state.Type));
+            SendExtraZones(br, state.Type, state.Caps, zones[0]);
+        }
 
         int mode;
         switch (effect)
