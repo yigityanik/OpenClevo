@@ -269,7 +269,13 @@ static partial class Diagnostics
         summary["rootCause"] = chain;
         if (chain["firstBrokenLink"] != null)
             Finding("critical", "root-cause", $"{chain["verdict"]}. {chain["suggestedFix"]}");
-        root["acpiTables"] = AcpiTables(files);
+        var acpiSkipped = new List<object?>();
+        root["acpiTables"] = AcpiTables(files, acpiSkipped);
+        root["acpiTablesNotCollected"] = new Node
+        {
+            ["why"] = "only DSDT, SSDT, PSDT, FACP and ECDT are collected; tables such as MSDM (it can hold the Windows product key), SLIC, WPBT and BGRT never are",
+            ["present_on_this_laptop"] = acpiSkipped,
+        };
         root["appParts"] = AppParts();
         if (wiz != null)
         {
@@ -613,7 +619,7 @@ static partial class Diagnostics
         if (profile.Length > 3) s = s.Replace(profile, "%USERPROFILE%", StringComparison.OrdinalIgnoreCase).Replace(profile.Replace("\\", "\\\\"), "%USERPROFILE%", StringComparison.OrdinalIgnoreCase);
         s = Regex.Replace(s, @"S-1-5-21-\d+-\d+-\d+-\d+", "S-1-5-21-<redacted>");   // the user's account id in event logs
         foreach (var (word, repl) in new[] { (Environment.UserName, "<user>"), (Environment.MachineName, "<computer>") })
-            if (word.Length > 2) s = Regex.Replace(s, @"(?<![A-Za-z0-9])" + Regex.Escape(word) + @"(?![A-Za-z0-9])", repl, RegexOptions.IgnoreCase);
+            if (word.Length >= 2) s = Regex.Replace(s, @"(?<![A-Za-z0-9])" + Regex.Escape(word) + @"(?![A-Za-z0-9])", repl, RegexOptions.IgnoreCase);
         return s;
     }
 

@@ -14,6 +14,8 @@ sealed class StepContext
     public required HardwareService Hw { get; init; }
     public required KeyboardEffectEngine Kb { get; init; }
     public Action<string> Status { get; set; } = _ => { };
+    /// <summary>Cancelled when the wizard window is closed while a step runs, so long waits end at once and the step can be undone.</summary>
+    public CancellationToken Ct { get; set; }
     public Dictionary<string, object?> Bag { get; } = new();
 }
 
@@ -343,7 +345,7 @@ static class DiagCatalog
                 Run = async c =>
                 {
                     bool start = SystemToggles.NumLock;
-                    for (int i = 20; i > 0; i--) { c.Status($"{i} s"); if (SystemToggles.NumLock != start) break; await Task.Delay(1000); }
+                    for (int i = 20; i > 0 && !c.Ct.IsCancellationRequested; i--) { c.Status($"{i} s"); if (SystemToggles.NumLock != start) break; try { await Task.Delay(1000, c.Ct); } catch (OperationCanceledException) { break; } }
                     bool changed = SystemToggles.NumLock != start;
                     if (changed) SystemToggles.NumLock = start;   // put the key back
                     return new StepOutcome(changed, changed ? "Num Lock changed state (restored)" : "no Num Lock change within 20 s");
@@ -375,7 +377,8 @@ static class DiagCatalog
                 c.Status($"{i} s");
                 bool any; lock (got) any = got.Count > 0;
                 if (any) { await Task.Delay(1200); break; }   // let a repeated press finish
-                await Task.Delay(1000);
+                if (c.Ct.IsCancellationRequested) break;
+                try { await Task.Delay(1000, c.Ct); } catch (OperationCanceledException) { break; }
             }
             long[] seen; lock (got) seen = got.ToArray();
             if (seen.Length == 0) return new StepOutcome(false, "no event within 20 s", Readback: "no events");

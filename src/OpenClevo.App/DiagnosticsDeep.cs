@@ -239,7 +239,11 @@ static partial class Diagnostics
     // ------------------------------------------------------------------ ACPI tables
 
     /// <summary>All ACPI tables of the laptop (DSDT and SSDTs hold Clevo's _DSM methods): bytes for the zip and a listing for the report.</summary>
-    static List<object?> AcpiTables(List<(string Name, byte[] Data)> files)
+    // Only the tables that hold Clevo's _DSM methods and the platform flags are collected. Everything else stays out: MSDM carries the
+    // Windows product key of the machine, SLIC/WPBT/BGRT and friends carry licence data, binaries or images.
+    static readonly HashSet<string> AcpiAllowList = new(["DSDT", "SSDT", "PSDT", "FACP", "ECDT"]);
+
+    static List<object?> AcpiTables(List<(string Name, byte[] Data)> files, List<object?> skipped)
     {
         var list = new List<object?>();
         try
@@ -256,6 +260,7 @@ static partial class Diagnostics
             var seen = new Dictionary<string, int>();
             foreach (var id in ids)
             {
+                if (!AcpiAllowList.Contains(id)) { if (!skipped.Contains(id)) skipped.Add(id); continue; }
                 uint key = BitConverter.ToUInt32(Encoding.ASCII.GetBytes(id), 0);
                 uint len = GetSystemFirmwareTable(Acpi, key, null, 0);
                 if (len == 0) continue;

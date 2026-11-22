@@ -36,6 +36,8 @@ sealed class DiagWizard : Window
     int _si, _ti;
     List<DiagStep> _steps = [];
     bool _closing, _stop;
+    readonly CancellationTokenSource _cts = new();
+    Task? _activeStep;             // the step that is running right now (closing the window waits for it, then undoes it)
     Func<Task>? _pendingUndo;      // the undo of a step that already changed something
     Func<Task>? _pendingTeardown;  // the teardown of the scenario in progress
     string? _noteText;
@@ -189,15 +191,23 @@ sealed class DiagWizard : Window
         Page(sc.Title, $"{T("diag.step", "Step")} {_ti + 1} / {_steps.Count}");
         _body.Children.Add(Line(st.Text));
         if (st.Warning != null) _body.Children.Add(Line(st.Warning, true, 12));
-        Buttons(Btn(T("diag.run", "Run"), () => Fire(RunStepAsync(sc, st)), primary: true),
+        Buttons(Btn(T("diag.run", "Run"), () => StartStep(sc, st), primary: true),
                 Btn(T("diag.skip", "Skip"), () => { Record(sc, st, new StepOutcome(true, "not run"), "skipped", null, 0); Fire(NextAsync()); }),
                 Btn(T("diag.finish", "Finish now"), () => { _stop = true; Fire(StopNowAsync()); }));
     }
 
     async Task StopNowAsync() { await EndScenarioAsync(); Finish(); }
 
+    void StartStep(DiagScenario sc, DiagStep st)
+    {
+        var t = RunStepAsync(sc, st);
+        _activeStep = t;
+        Fire(t);
+    }
+
     async Task RunStepAsync(DiagScenario sc, DiagStep st)
     {
+        _ctx.Ct = _cts.Token;
         Page(sc.Title, $"{T("diag.step", "Step")} {_ti + 1} / {_steps.Count}");
         _body.Children.Add(Line(st.Text));
         var status = Line(T("diag.running", "Running…"), true);
@@ -279,7 +289,7 @@ sealed class DiagWizard : Window
 
     protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
     {
-        if (!_closing && (_pendingUndo != null || _pendingTeardown != null))
+        if (!_closing && (_pendingUndo != null || _pendingTeardown != null || _activeStep is { IsCompleted: false }))
         {
             e.Cancel = true;
             _closing = true;
@@ -290,6 +300,10 @@ sealed class DiagWizard : Window
 
     async Task CleanUpAndCloseAsync()
     {
+        // a step may still be running (for example waiting for an Fn key press): stop its wait and let it finish first,
+        // otherwise its undo does not exist yet and whatever the key did would stay
+        _cts.Cancel();
+        if (_activeStep != null) { try { await _activeStep; } catch { } }
         if (_pendingUndo != null) { try { await _pendingUndo(); } catch { } _pendingUndo = null; }
         if (_pendingTeardown != null) { try { await _pendingTeardown(); } catch { } _pendingTeardown = null; }
         try { _ctx.Hw.ReloadSettings(); } catch { }
