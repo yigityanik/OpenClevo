@@ -22,6 +22,12 @@ public sealed class FnEvents : IDisposable
     /// <summary>Raised on the listener thread with the event code.</summary>
     public event Action<long>? Received;
 
+    /// <summary>True once the driver accepted the event registration (the listener is live).</summary>
+    public volatile bool Registered;
+
+    /// <summary>Why the channel could not be opened (null while fine or not yet tried).</summary>
+    public volatile string? Error;
+
     public FnEvents()
     {
         _thread = new Thread(Listen) { IsBackground = true, Name = "OpenClevo Fn events" };
@@ -33,13 +39,14 @@ public sealed class FnEvents : IDisposable
         try
         {
             using var h = CreateFileW(AcpiBridge.FindDevicePath(), 0xC0000000, 3, IntPtr.Zero, 3, 0x80, IntPtr.Zero);
-            if (h.IsInvalid) return;
+            if (h.IsInvalid) { Error = "driver handle could not be opened (error " + Marshal.GetLastWin32Error() + ")"; return; }
             IntPtr evt = CreateEvent(IntPtr.Zero, true, false, null);
             IntPtr inBuf = Marshal.AllocHGlobal(8), outBuf = Marshal.AllocHGlobal(8);
             try
             {
                 Marshal.WriteIntPtr(inBuf, evt);
-                if (!DeviceIoControl(h, IoctlRegister, inBuf, 8, IntPtr.Zero, 0, out _, IntPtr.Zero)) return;
+                if (!DeviceIoControl(h, IoctlRegister, inBuf, 8, IntPtr.Zero, 0, out _, IntPtr.Zero)) { Error = "event registration refused (error " + Marshal.GetLastWin32Error() + ")"; return; }
+                Registered = true;
                 while (!_stop)
                 {
                     if (WaitForSingleObject(evt, 500) != 0) continue;   // timeout: look at _stop again
@@ -56,7 +63,7 @@ public sealed class FnEvents : IDisposable
                 CloseHandle(evt);
             }
         }
-        catch { }   // no driver: nothing to listen to (the main window already says so)
+        catch (Exception ex) { Error ??= ex.Message; }   // no driver: nothing to listen to (the main window already says so)
     }
 
     public void Dispose()

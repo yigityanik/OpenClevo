@@ -834,6 +834,13 @@ public partial class MainWindow : Window
 
     void OsdToggle_Click(object s, RoutedEventArgs e) => OsdHost.Enabled = OsdToggle.IsChecked == true;
 
+    /// <summary>Opens the compatibility check: guided tests (every change undone), then OpenClevo-Diagnostics-date.zip (text + JSON) in Documents.</summary>
+    void DiagBtn_Click(object s, RoutedEventArgs e)
+    {
+        var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version?.ToString(3) ?? "";
+        new DiagWizard(_hw, _kb, version) { Owner = this }.ShowDialog();
+    }
+
     // ---- theme toggle: the sun shows in the light theme, the moon in the dark one ----
     void ThemeBtn_Click(object s, RoutedEventArgs e)
     {

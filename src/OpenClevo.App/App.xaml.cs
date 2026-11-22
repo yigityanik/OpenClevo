@@ -23,6 +23,11 @@ public partial class App : Application
         // CPU rendering: the GPU path keeps ~80 MB of video-memory mirrors and shader state for a window this small
         // ("OPENCLEVO_HWRENDER=1" switches the GPU path back on, in case animations feel better there)
         if (Environment.GetEnvironmentVariable("OPENCLEVO_HWRENDER") != "1") System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
+        // a crash leaves a trace the compatibility report can include (most crashes happen on worker threads)
+        AppDomain.CurrentDomain.UnhandledException += (_, ev) =>
+        {
+            try { System.IO.File.AppendAllText(System.IO.Path.Combine(System.IO.Path.GetTempPath(), "OpenClevo-crash.log"), $"{DateTime.Now:yyyy-MM-dd HH:mm:ss}  {ev.ExceptionObject}\r\n\r\n"); } catch { }
+        };
         Loc.Init();   // before any window or tray menu is built
         // removal (Apps & features runs "--uninstall"): an elevated copy of this exe shows the removal window
         if (e.Args.Contains("--uninstall")) { Shutdown(Uninstaller.Elevate()); return; }
