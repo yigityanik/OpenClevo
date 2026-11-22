@@ -254,6 +254,8 @@ static partial class Diagnostics
         }
         catch { }
 
+        if (!SafeBool(() => SystemToggles.Camera))
+            Finding("warning", "camera-privacy-deny", "Windows' camera privacy switch for desktop apps is set to Deny for this user: desktop apps (browsers, Zoom, Teams) cannot use the camera even when it is powered on. Settings > Privacy > Camera.");
         if (ccService) Finding("warning", "clevo-service-running", "Clevo's Control Center Hotkey Service (CCDCHUService) is running. It can reset fan and power settings in the background and may handle the same Fn keys.");
         if (fnKeyRunning) Finding("info", "fnkey-running", "Clevo's FnKey.exe (Fn hotkeys and OSD) is running next to OpenClevo. Both react to the Fn keys; this is normal but can double notices.");
         if (dchuRunning && !ccService) Finding("info", "dchu-running", "DCHUService is running.");
@@ -609,6 +611,7 @@ static partial class Diagnostics
     {
         string profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
         if (profile.Length > 3) s = s.Replace(profile, "%USERPROFILE%", StringComparison.OrdinalIgnoreCase).Replace(profile.Replace("\\", "\\\\"), "%USERPROFILE%", StringComparison.OrdinalIgnoreCase);
+        s = Regex.Replace(s, @"S-1-5-21-\d+-\d+-\d+-\d+", "S-1-5-21-<redacted>");   // the user's account id in event logs
         foreach (var (word, repl) in new[] { (Environment.UserName, "<user>"), (Environment.MachineName, "<computer>") })
             if (word.Length > 2) s = Regex.Replace(s, @"(?<![A-Za-z0-9])" + Regex.Escape(word) + @"(?![A-Za-z0-9])", repl, RegexOptions.IgnoreCase);
         return s;

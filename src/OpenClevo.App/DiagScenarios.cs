@@ -61,7 +61,7 @@ static class DiagCatalog
         if (!o.CommandOk) return hasQuestion && yes ? "inconsistent: the command failed but the user saw the effect" : "failed: the command was refused or errored";
         if (o.ReadbackMatches == false) return hasQuestion && yes ? "inconsistent: the user saw the effect but the readback differs" : "failed: the readback does not match what was set";
         if (expectYes is bool e && hasQuestion) return yes == e ? "confirmed: the answer agrees with the app's own check" : "inconsistent: the answer contradicts the app's own check";
-        if (!hasQuestion) return o.ReadbackMatches == true ? "confirmed: the readback matches" : "observed: the command was accepted (nothing to confirm)";
+        if (!hasQuestion) return o.ReadbackMatches == true ? "confirmed: the readback matches" : "observed: the step ran and was recorded (nothing to confirm)";
         if (yes) return o.ReadbackMatches == true ? "confirmed: the user saw the effect and the readback matches" : "user-observed: the user confirmed it (no automatic check is possible)";
         return o.ReadbackMatches == true ? "inconsistent: the readback matches but the user saw no effect" : "no effect: the command was accepted but the user saw nothing";
     }
@@ -317,9 +317,24 @@ static class DiagCatalog
         Id = "fn", Title = T("diag.sc.fn", "Fn keys and notices"), Hint = T("diag.sc.fn_hint", "you press a key, I listen"),
         Steps = ctx =>
         [
-            WaitStep("fn-camera", T("diag.fn.camera", "Press the camera Fn key now (you have 20 seconds)."), [FnEvents.CameraOff, FnEvents.CameraOn]),
-            WaitStep("fn-touchpad", T("diag.fn.touchpad", "Press the touchpad Fn key now (you have 20 seconds)."), [FnEvents.Touchpad]),
-            WaitStep("fn-kblight", T("diag.fn.kblight", "Press a keyboard-light Fn key now (you have 20 seconds)."), [0xFA, 0xFB]),
+            // the key really toggles the camera / touchpad, so the state before is remembered and put back afterwards
+            WaitStep("fn-camera", T("diag.fn.camera", "Press the camera Fn key now (you have 20 seconds)."), [FnEvents.CameraOff, FnEvents.CameraOn],
+                snapshot: async c => { c.Bag["fnCamPrev"] = await Task.Run(() => { using var br = AcpiBridge.Open(); return br.ReadCameraPower(); }); },
+                restore: async c =>
+                {
+                    if (c.Bag["fnCamPrev"] is not bool prev) return;
+                    await Task.Run(() => { using var br = AcpiBridge.Open(); if (br.ReadCameraPower() != prev) br.SetCameraPower(prev); });
+                    c.Hw.NoteCameraPower(prev);
+                }),
+            WaitStep("fn-touchpad", T("diag.fn.touchpad", "Press the touchpad Fn key now (you have 20 seconds)."), [FnEvents.Touchpad],
+                snapshot: c => { c.Bag["fnTpPrev"] = SystemToggles.TouchpadSupported ? SystemToggles.Touchpad : null; return Task.CompletedTask; },
+                restore: async c =>
+                {
+                    await Task.Delay(400);   // Windows applies the key a moment later
+                    if (c.Bag["fnTpPrev"] is bool prev && SystemToggles.Touchpad != prev) SystemToggles.Touchpad = prev;
+                }),
+            // codes seen on a G5 KF for the keyboard-light keys: 0x81, 0x9f, 0x83, 0xfa, 0xfb (which key sends which is not settled yet)
+            WaitStep("fn-kblight", T("diag.fn.kblight", "Press a keyboard-light Fn key now (you have 20 seconds)."), [0x81, 0x82, 0x83, 0x9F, 0xFA, 0xFB]),
             new DiagStep
             {
                 Id = "fn-numlock",
@@ -338,12 +353,18 @@ static class DiagCatalog
         ],
     };
 
-    static DiagStep WaitStep(string id, string text, long[] wanted) => new()
+    /// <summary>
+    /// Waits up to 20 s for the user to press a key and records every Fn event code that arrives. Any event proves the channel works;
+    /// whether the code is the one the app expects is noted separately (a new code is data, not a failure).
+    /// </summary>
+    static DiagStep WaitStep(string id, string text, long[] wanted, Func<StepContext, Task>? snapshot = null, Func<StepContext, Task>? restore = null) => new()
     {
         Id = id,
         Text = text,
+        Undo = restore,
         Run = async c =>
         {
+            if (snapshot != null) { try { await snapshot(c); } catch { } }
             var got = new List<long>();
             using var fn = new FnEvents();
             fn.Received += code => { lock (got) got.Add(code); };
@@ -352,13 +373,15 @@ static class DiagCatalog
             for (int i = 20; i > 0; i--)
             {
                 c.Status($"{i} s");
-                lock (got) if (got.Any(g => wanted.Contains(g))) break;
+                bool any; lock (got) any = got.Count > 0;
+                if (any) { await Task.Delay(1200); break; }   // let a repeated press finish
                 await Task.Delay(1000);
             }
             long[] seen; lock (got) seen = got.ToArray();
-            bool ok = seen.Any(g => wanted.Contains(g));
-            return new StepOutcome(ok, ok ? "event received" : seen.Length > 0 ? "other events arrived but not the expected one" : "no event within 20 s",
-                Readback: seen.Length == 0 ? "no events" : "events: " + string.Join(", ", seen.Select(s => "0x" + s.ToString("x2"))));
+            if (seen.Length == 0) return new StepOutcome(false, "no event within 20 s", Readback: "no events");
+            bool known = seen.Any(g => wanted.Contains(g));
+            return new StepOutcome(true, known ? "event received (a code the app knows)" : "event received, but with a code the app does not list for this key: new information for the report",
+                Readback: "events: " + string.Join(", ", seen.Select(s => "0x" + s.ToString("x2"))));
         },
     };
 
@@ -372,14 +395,17 @@ static class DiagCatalog
             new DiagStep
             {
                 Id = "startup-entry",
-                Text = T("diag.startup.read", "I will check whether OpenClevo is set to start with Windows."),
-                Question = T("diag.startup.q", "Did OpenClevo start by itself the last time you restarted Windows?"),
+                Text = T("diag.startup.read", "I will check whether OpenClevo is set to start with Windows, and whether Windows lets it."),
+                Question = T("diag.startup.q", "After you restart Windows, does the OpenClevo tray icon appear by itself? (It starts hidden in the tray.)"),
                 Run = c =>
                 {
                     bool entry = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run")?.GetValue("OpenClevo") != null;
-                    return Task.FromResult(new StepOutcome(true, "start-with-Windows entry " + (entry ? "present" : "not present")));
+                    // Task Manager > Startup apps keeps its own on/off switch; first byte odd (03, 07) = switched off there
+                    var approved = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run")?.GetValue("OpenClevo") as byte[];
+                    bool off = approved is { Length: > 0 } && (approved[0] & 1) == 1;
+                    return Task.FromResult(new StepOutcome(true, $"start-with-Windows entry {(entry ? "present" : "not present")}; Windows startup switch {(approved == null ? "not set" : off ? "SWITCHED OFF in Task Manager > Startup apps" : "on")}"));
                 },
-                ExpectYes = o => o.Detail.EndsWith("not present") ? false : true,
+                ExpectYes = o => o.Detail.Contains("entry present") && !o.Detail.Contains("SWITCHED OFF"),
             },
         ],
     };
