@@ -67,10 +67,12 @@ public sealed class BassMeter : IDisposable
                         if (_capture == cap) { _capture = null; stoppedDevice = _device; _device = null; }
                         _retryAt = DateTime.UtcNow.AddSeconds(2);
                     }
+                    // Dispose() below may dispose the same capture (it stops it, which raises this event): a second dispose
+                    // throws inside NAudio, and on a pool thread that would take the whole app down
                     ThreadPool.QueueUserWorkItem(_ =>
                     {
-                        try { cap.Dispose(); }
-                        finally { stoppedDevice?.Dispose(); }
+                        try { cap.Dispose(); } catch { }
+                        try { stoppedDevice?.Dispose(); } catch { }
                     });
                 };
                 cap.StartRecording();
@@ -125,8 +127,8 @@ public sealed class BassMeter : IDisposable
         MMDevice? device;
         lock (_gate) { _disposed = true; cap = _capture; _capture = null; device = _device; _device = null; }
         try { cap?.StopRecording(); } catch { }
-        cap?.Dispose();
-        device?.Dispose();
+        try { cap?.Dispose(); } catch { }
+        try { device?.Dispose(); } catch { }
     }
 
     public double ReadVolume()
